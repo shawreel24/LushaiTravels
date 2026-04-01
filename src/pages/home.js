@@ -140,6 +140,13 @@ export function renderHome() {
 }
 
 export function initHome() {
+  // Set hero background using BASE_URL so it works on GitHub Pages subpath
+  const heroBg = document.querySelector('.hero-bg');
+  if (heroBg) {
+    const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+    heroBg.style.backgroundImage = `url('${base}/images/digilife-siaha-2cM78THYc4w-unsplash.jpg')`;
+  }
+
   // Clickable cards
   document.querySelectorAll('[data-href]').forEach(card => {
     card.addEventListener('click', () => window.router.navigate(card.dataset.href));
