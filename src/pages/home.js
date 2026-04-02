@@ -140,6 +140,12 @@ export function renderHome() {
 }
 
 export function initHome() {
+  // Set hero background image with correct base path (works locally + GitHub Pages)
+  const heroBg = document.querySelector('.hero-bg');
+  if (heroBg) {
+    heroBg.style.backgroundImage = `url('${import.meta.env.BASE_URL}images/digilife-siaha-2cM78THYc4w-unsplash.jpg')`;
+  }
+
   // Clickable cards
   document.querySelectorAll('[data-href]').forEach(card => {
     card.addEventListener('click', () => window.router.navigate(card.dataset.href));
