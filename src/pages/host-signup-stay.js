@@ -274,9 +274,18 @@ async function submitListing() {
   const nextBtn = document.getElementById('next-btn');
   if (nextBtn) { nextBtn.disabled = true; nextBtn.textContent = '⏳ Submitting…'; }
   try {
-    // 1. Sign up the host account (or sign in if already exists)
-    await signUpEmail({ email: formData.email, password: formData.password, fullName: formData.name, phone: formData.phone });
-    await refreshUserCache();
+    // 1. If user is NOT already logged in, create their account first
+    const { supabase } = await import('../lib/supabase.js');
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session) {
+      // New host — sign up with email/password
+      await signUpEmail({ email: formData.email, password: formData.password, fullName: formData.name, phone: formData.phone });
+      await refreshUserCache();
+    } else {
+      // Already logged in — just refresh cache to ensure latest user data
+      await refreshUserCache();
+    }
 
     // 2. Insert the stay listing
     await insertStay({

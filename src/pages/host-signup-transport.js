@@ -150,7 +150,12 @@ export function initHostSignupTransport() {
     const btn = document.getElementById('submit-transport-btn');
     if (btn) { btn.disabled = true; btn.textContent = '⏳ Submitting…'; }
     try {
-      await signUpEmail({ email, password, fullName: name, phone });
+      // Create account only if not already logged in
+      const { supabase } = await import('../lib/supabase.js');
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        await signUpEmail({ email, password, fullName: name, phone });
+      }
       await refreshUserCache();
       await insertTransport({
         name: biz,

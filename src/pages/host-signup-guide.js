@@ -127,7 +127,12 @@ export function initHostSignupGuide() {
     const btn = document.getElementById('submit-guide-btn');
     if (btn) { btn.disabled = true; btn.textContent = '⏳ Submitting…'; }
     try {
-      await signUpEmail({ email, password, fullName: name, phone });
+      // Create account only if not already logged in
+      const { supabase } = await import('../lib/supabase.js');
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        await signUpEmail({ email, password, fullName: name, phone });
+      }
       await refreshUserCache();
       await insertGuide({
         name, title, experience, languages, specialties,
