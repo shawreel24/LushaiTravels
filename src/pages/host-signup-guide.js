@@ -1,4 +1,5 @@
-import { registerHost, showToast } from '../utils.js';
+import { signUpEmail, insertGuide } from '../lib/supabase.js';
+import { refreshUserCache, showToast } from '../utils.js';
 
 let uploadedImages = [];
 
@@ -109,7 +110,7 @@ export function initHostSignupGuide() {
       reader.readAsDataURL(file);
     });
   });
-  document.getElementById('submit-guide-btn')?.addEventListener('click', () => {
+  document.getElementById('submit-guide-btn')?.addEventListener('click', async () => {
     const name = document.getElementById('g-name')?.value?.trim();
     const email = document.getElementById('g-email')?.value?.trim();
     const phone = document.getElementById('g-phone')?.value?.trim();
@@ -123,11 +124,25 @@ export function initHostSignupGuide() {
     const specialties = [...document.querySelectorAll('input[name="g-spec"]:checked')].map(el => el.value);
     const certs = document.getElementById('g-certs')?.value?.split('\n').filter(Boolean);
     if (!name||!email||!phone||!password||!title||!bio||!price||!location||!experience||!languages.length||!specialties.length) { showToast('Please fill all required fields','','error'); return; }
-    if (!document.getElementById('g-agree')?.checked) { showToast('Please agree to Terms','','error'); return; }
+    const btn = document.getElementById('submit-guide-btn');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Submitting…'; }
     try {
-      registerHost({ name, email, phone, password, avatar: name.charAt(0).toUpperCase(), listing: { type:'guide', title, experience, languages, specialties, price, location, bio, certifications: certs, images: uploadedImages } });
-      showToast('Guide application submitted! 🎉', 'We\'ll review within 48 hours.');
+      await signUpEmail({ email, password, fullName: name, phone });
+      await refreshUserCache();
+      await insertGuide({
+        name, title, experience, languages, specialties,
+        price: parseInt(price), location, bio,
+        certifications: certs,
+        images: uploadedImages,
+        cover_image: uploadedImages[0] || '',
+        phone, email,
+        verified: true, available: true,
+      });
+      showToast('Guide application live! 🎉', 'Your profile is now visible to travellers.');
       setTimeout(() => window.router.navigate('/host-dashboard'), 800);
-    } catch(e) { showToast(e.message,'','error'); }
+    } catch(e) {
+      showToast(e.message || 'Submission failed','','error');
+      if (btn) { btn.disabled = false; btn.textContent = 'Submit Guide Application 🧭'; }
+    }
   });
 }

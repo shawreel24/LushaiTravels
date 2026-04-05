@@ -1,4 +1,5 @@
-import { loginUser, showToast, appHref } from '../utils.js';
+import { signInEmail, signInGoogle } from '../lib/supabase.js';
+import { refreshUserCache, showToast, appHref } from '../utils.js';
 
 export function renderLogin() {
   return `
@@ -25,10 +26,13 @@ export function renderLogin() {
         </div>
 
         <div style="text-align:right;margin-bottom:20px">
-          <a href="#" style="font-size:0.85rem;color:var(--emerald-400)">Forgot password?</a>
+          <a href="#" id="forgot-link" style="font-size:0.85rem;color:var(--emerald-400)">Forgot password?</a>
         </div>
 
-        <button class="btn btn-primary w-full" id="login-btn" style="justify-content:center;padding:14px">Log In</button>
+        <button class="btn btn-primary w-full" id="login-btn" style="justify-content:center;padding:14px">
+          <span id="login-label">Log In</span>
+          <span id="login-spinner" style="display:none">⏳ Logging in…</span>
+        </button>
 
         <div class="auth-switch mt-16">Don't have an account? <a href="${appHref('/signup-user')}" data-link>Sign up</a></div>
         <div class="auth-switch" style="margin-top:8px">Are you a host? <a href="${appHref('/host-signup-stay')}" data-link>Register your property →</a></div>
@@ -38,24 +42,59 @@ export function renderLogin() {
 }
 
 export function initLogin() {
-  document.getElementById('login-btn')?.addEventListener('click', () => {
-    const email = document.getElementById('login-email')?.value?.trim();
+  const btn    = document.getElementById('login-btn');
+  const label  = document.getElementById('login-label');
+  const spinner = document.getElementById('login-spinner');
+
+  const setLoading = (on) => {
+    btn.disabled = on;
+    label.style.display  = on ? 'none' : '';
+    spinner.style.display = on ? '' : 'none';
+  };
+
+  btn?.addEventListener('click', async () => {
+    const email    = document.getElementById('login-email')?.value?.trim();
     const password = document.getElementById('login-password')?.value;
     if (!email || !password) { showToast('Please fill all fields', '', 'error'); return; }
+    setLoading(true);
     try {
-      loginUser(email, password);
+      await signInEmail({ email, password });
+      await refreshUserCache();
       showToast('Welcome back! 👋');
       setTimeout(() => window.router.navigate('/'), 500);
     } catch (e) {
-      showToast(e.message, '', 'error');
+      showToast(e.message || 'Login failed', '', 'error');
+    } finally {
+      setLoading(false);
     }
   });
 
   document.getElementById('login-password')?.addEventListener('keydown', e => {
-    if (e.key === 'Enter') document.getElementById('login-btn')?.click();
+    if (e.key === 'Enter') btn?.click();
   });
 
-  document.getElementById('google-btn')?.addEventListener('click', () => {
-    showToast('Google login coming soon!', 'Use email login for now.');
+  document.getElementById('google-btn')?.addEventListener('click', async () => {
+    try {
+      await signInGoogle();
+      // page will redirect to Google; no need to do anything else
+    } catch (e) {
+      showToast(e.message || 'Google login failed', '', 'error');
+    }
+  });
+
+  document.getElementById('forgot-link')?.addEventListener('click', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('login-email')?.value?.trim();
+    if (!email) { showToast('Enter your email above first', '', 'error'); return; }
+    try {
+      const { supabase } = await import('../lib/supabase.js');
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin + appHref('/'),
+      });
+      if (error) throw error;
+      showToast('Password reset email sent! ✉️', 'Check your inbox.');
+    } catch (e) {
+      showToast(e.message || 'Failed to send reset email', '', 'error');
+    }
   });
 }

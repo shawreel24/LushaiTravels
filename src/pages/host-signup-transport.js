@@ -1,4 +1,5 @@
-import { registerHost, showToast } from '../utils.js';
+import { signUpEmail, insertTransport } from '../lib/supabase.js';
+import { refreshUserCache, showToast } from '../utils.js';
 
 export function renderHostSignupTransport() {
   return `
@@ -134,7 +135,7 @@ export function initHostSignupTransport() {
   document.getElementById('t-license')?.addEventListener('change', e => {
     if (e.target.files[0]) document.getElementById('t-license-preview').textContent = '✅ ' + e.target.files[0].name;
   });
-  document.getElementById('submit-transport-btn')?.addEventListener('click', () => {
+  document.getElementById('submit-transport-btn')?.addEventListener('click', async () => {
     const name = document.getElementById('t-name')?.value?.trim();
     const email = document.getElementById('t-email')?.value?.trim();
     const phone = document.getElementById('t-phone')?.value?.trim();
@@ -146,10 +147,28 @@ export function initHostSignupTransport() {
     const features = [...document.querySelectorAll('input[name="t-feat"]:checked')].map(el => el.value);
     if (!name||!email||!phone||!password||!biz||!type||!location||!desc) { showToast('Please fill all required fields','','error'); return; }
     if (!document.getElementById('t-agree')?.checked) { showToast('Please agree to Terms','','error'); return; }
+    const btn = document.getElementById('submit-transport-btn');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Submitting…'; }
     try {
-      registerHost({ name, email, phone, password, avatar: name.charAt(0).toUpperCase(), listing: { type:'transport', name: biz, serviceType: type, location, description: desc, features, images: uploadedImages } });
-      showToast('Transport listing submitted! 🎉', 'We\'ll review within 48 hours.');
+      await signUpEmail({ email, password, fullName: name, phone });
+      await refreshUserCache();
+      await insertTransport({
+        name: biz,
+        owner_name: name,
+        type, location,
+        description: desc,
+        features,
+        images: uploadedImages,
+        cover_image: uploadedImages[0] || '',
+        phone, email,
+        vehicles: [],
+        verified: true, available: true,
+      });
+      showToast('Transport listing live! 🎉', 'Your listing is now visible to travellers.');
       setTimeout(() => window.router.navigate('/host-dashboard'), 800);
-    } catch(e) { showToast(e.message,'','error'); }
+    } catch(e) {
+      showToast(e.message || 'Submission failed','','error');
+      if (btn) { btn.disabled = false; btn.textContent = 'Submit Transport Listing 🚗'; }
+    }
   });
 }

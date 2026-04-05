@@ -1,4 +1,4 @@
-import { stays } from '../data/stays.js';
+import { fetchStays } from '../lib/supabase.js';
 import { starsHTML } from '../utils.js';
 
 export function renderStays() {
@@ -15,27 +15,47 @@ export function renderStays() {
     </section>
     <section class="section">
       <div class="container">
-        <div class="grid-3" id="stays-grid"></div>
+        <div id="stays-grid" class="grid-3">
+          <div style="grid-column:1/-1;text-align:center;padding:60px;color:var(--text-muted)">⏳ Loading stays…</div>
+        </div>
       </div>
     </section>
   `;
 }
 
-export function initStays() {
+export async function initStays() {
   let activeType = 'all';
-  
-  const render = () => {
-    const filtered = activeType === 'all' ? stays : stays.filter(s => s.type.toLowerCase() === activeType);
-    document.getElementById('stays-grid').innerHTML = filtered.length ? filtered.map(stayCard).join('') : '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-muted)">No stays found.</div>';
-    document.querySelectorAll('[data-href]').forEach(el => el.addEventListener('click', () => window.router.navigate(el.dataset.href)));
+  let allStays = [];
+
+  const grid = document.getElementById('stays-grid');
+
+  const renderGrid = (stays) => {
+    if (!grid) return;
+    grid.innerHTML = stays.length
+      ? stays.map(stayCard).join('')
+      : '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-muted)">No stays found.</div>';
+    grid.querySelectorAll('[data-href]').forEach(el =>
+      el.addEventListener('click', () => window.router.navigate(el.dataset.href))
+    );
   };
-  render();
+
+  try {
+    allStays = await fetchStays();
+    renderGrid(allStays);
+  } catch (e) {
+    console.error('Error loading stays:', e);
+    if (grid) grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-muted)">Failed to load stays. Please refresh.</div>';
+  }
+
   document.querySelectorAll('.chip[data-type]').forEach(chip => {
     chip.addEventListener('click', () => {
       document.querySelectorAll('.chip[data-type]').forEach(c => c.classList.remove('active'));
       chip.classList.add('active');
       activeType = chip.dataset.type;
-      render();
+      const filtered = activeType === 'all'
+        ? allStays
+        : allStays.filter(s => s.type?.toLowerCase() === activeType);
+      renderGrid(filtered);
     });
   });
 }
@@ -44,21 +64,21 @@ function stayCard(s) {
   return `
     <div class="card stay-card" data-href="/stay/${s.id}">
       <div class="card-img-wrap">
-        <img src="${s.coverImage}" alt="${s.name}" loading="lazy" />
-        <div class="card-badge">${s.type.toUpperCase()}</div>
-        ${s.topRated ? `<div style="position:absolute;top:12px;right:12px;background:rgba(245,158,11,0.9);backdrop-filter:blur(8px);padding:4px 10px;border-radius:50px;font-size:0.72rem;font-weight:700;color:#000">🔥 TOP RATED</div>` : ''}
-        <div class="card-rating">${starsHTML(s.rating)} <span>${s.rating} (${s.reviews})</span></div>
+        <img src="${s.cover_image}" alt="${s.name}" loading="lazy" />
+        <div class="card-badge">${s.type?.toUpperCase()}</div>
+        ${s.top_rated ? `<div style="position:absolute;top:12px;right:12px;background:rgba(245,158,11,0.9);backdrop-filter:blur(8px);padding:4px 10px;border-radius:50px;font-size:0.72rem;font-weight:700;color:#000">🔥 TOP RATED</div>` : ''}
+        <div class="card-rating">${starsHTML(s.rating)} <span>${s.rating} (${s.reviews_count})</span></div>
       </div>
       <div class="card-body">
         <h4 class="card-title">${s.name}</h4>
         <div class="card-meta" style="margin-bottom:8px">📍 ${s.location}</div>
         <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
-          ${s.amenities.slice(0, 3).map(a => `<span class="tag" style="font-size:0.72rem">${a}</span>`).join('')}
-          ${s.amenities.length > 3 ? `<span class="tag" style="font-size:0.72rem">+${s.amenities.length - 3} more</span>` : ''}
+          ${(s.amenities || []).slice(0, 3).map(a => `<span class="tag" style="font-size:0.72rem">${a}</span>`).join('')}
+          ${(s.amenities || []).length > 3 ? `<span class="tag" style="font-size:0.72rem">+${s.amenities.length - 3} more</span>` : ''}
         </div>
         <div class="flex-between">
-          <span class="price">₹${s.price.toLocaleString()}<span>/night</span></span>
-          <span style="font-size:0.8rem;color:var(--text-muted)">👥 Max ${s.maxGuests}</span>
+          <span class="price">₹${s.price?.toLocaleString()}<span>/night</span></span>
+          <span style="font-size:0.8rem;color:var(--text-muted)">👥 Max ${s.max_guests}</span>
         </div>
       </div>
     </div>

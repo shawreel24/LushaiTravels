@@ -1,4 +1,16 @@
-// ── Base URL (Vite: '/' in dev, '/LushaiTravels/' on GitHub Pages) ─
+// ── Supabase helpers (imported at top as required by ES modules) ──
+import {
+  getCurrentUser as _getUser,
+  signOut        as _signOut,
+  getWishlist    as _getWishlist,
+  toggleWishlist as _toggleWishlist,
+  isWishlisted   as _isWishlisted,
+  getLastBooking as _getLastBooking,
+  fetchReviews   as _getReviews,
+  addReview      as _addReview,
+} from './lib/supabase.js';
+
+// ── Base URL ──────────────────────────────────────────────────
 export function appHref(appPath) {
   const path = appPath.startsWith('/') ? appPath : `/${appPath}`;
   if (path === '/') return import.meta.env.BASE_URL;
@@ -14,96 +26,71 @@ export function getRoutePathname(fullPathname) {
   return fullPathname || '/';
 }
 
-// ── Storage helpers ──────────────────────────────────────────────
-export const storage = {
-  get: (key) => { try { return JSON.parse(localStorage.getItem(key)); } catch { return null; } },
-  set: (key, value) => localStorage.setItem(key, JSON.stringify(value)),
-  remove: (key) => localStorage.removeItem(key),
-};
+// ── Auth — thin wrappers over Supabase ───────────────────────
+// getCurrentUser() reads from localStorage cache (sync) so pages
+// don't need to await. Cache is populated by refreshUserCache().
+export function getCurrentUser() {
+  try {
+    const raw = localStorage.getItem('sb_cached_user');
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
 
-// ── Auth ─────────────────────────────────────────────────────────
-export function getCurrentUser() { return storage.get('lt_user'); }
-export function setCurrentUser(user) { storage.set('lt_user', user); }
-export function logout() { storage.remove('lt_user'); window.router.navigate('/'); }
 export function isLoggedIn() { return !!getCurrentUser(); }
-export function isHost() { const u = getCurrentUser(); return u?.role === 'host'; }
+export function isHost()     { return getCurrentUser()?.role === 'host'; }
 
-export function registerUser(data) {
-  const users = storage.get('lt_users') || [];
-  if (users.find(u => u.email === data.email)) throw new Error('Email already registered');
-  const user = { ...data, id: Date.now(), role: 'user', createdAt: new Date().toISOString(), avatar: data.fullName?.charAt(0).toUpperCase() };
-  users.push(user);
-  storage.set('lt_users', users);
-  setCurrentUser(user);
-  return user;
+export async function logout() {
+  await _signOut();
+  localStorage.removeItem('sb_cached_user');
+  window.router.navigate('/');
 }
 
-export function registerHost(data) {
-  const users = storage.get('lt_users') || [];
-  if (users.find(u => u.email === data.email)) throw new Error('Email already registered');
-  const user = { ...data, id: Date.now(), role: 'host', status: 'pending', createdAt: new Date().toISOString(), avatar: data.name?.charAt(0).toUpperCase() };
-  users.push(user);
-  storage.set('lt_users', users);
-  const listings = storage.get('lt_listings') || [];
-  listings.push({ ...data.listing, hostId: user.id, status: 'pending', id: `listing-${Date.now()}` });
-  storage.set('lt_listings', listings);
-  setCurrentUser(user);
-  return user;
+// Populates the localStorage cache from a live Supabase session.
+// Called on boot and after login/signup.
+export async function refreshUserCache() {
+  try {
+    const user = await _getUser();
+    if (user) {
+      localStorage.setItem('sb_cached_user', JSON.stringify(user));
+    } else {
+      localStorage.removeItem('sb_cached_user');
+    }
+    return user;
+  } catch (e) {
+    console.warn('[refreshUserCache]', e.message);
+    return null;
+  }
 }
 
-export function loginUser(email, password) {
-  const users = storage.get('lt_users') || [];
-  const user = users.find(u => u.email === email && u.password === password);
-  if (!user) throw new Error('Invalid email or password');
-  setCurrentUser(user);
-  return user;
+// ── Wishlist (localStorage, no auth required) ─────────────────
+export function getWishlist()        { return _getWishlist(); }
+export function toggleWishlist(id)   { return _toggleWishlist(id); }
+export function isWishlisted(id)     { return _isWishlisted(id); }
+
+// ── Bookings ──────────────────────────────────────────────────
+export function getLastBooking() { return _getLastBooking(); }
+
+// ── Reviews ───────────────────────────────────────────────────
+// stay-detail.js and destination-detail.js call these synchronously
+// but they are async — pages that call them must await
+export async function getReviews(listingId) { return _getReviews(listingId); }
+export async function addReview(data) {
+  // Adapt old signature { listingId, rating, text, userName } to new Supabase shape
+  return _addReview({
+    listingId:   data.listingId,
+    listingType: data.listingType || 'stay',
+    rating:      data.rating,
+    comment:     data.text || data.comment,
+  });
 }
 
-// ── Reviews ──────────────────────────────────────────────────────
-export function getReviews(listingId) {
-  const all = storage.get('lt_reviews') || [];
-  return all.filter(r => r.listingId === listingId);
+// ── registerHost — stub for host-signup-guide & transport ─────
+// Those pages still import this; the actual Supabase call happens inside them
+export function registerHost() {
+  throw new Error('registerHost is deprecated. Use Supabase auth + insertStay/insertGuide/insertTransport instead.');
 }
 
-export function addReview(review) {
-  const all = storage.get('lt_reviews') || [];
-  const newReview = { ...review, id: Date.now(), createdAt: new Date().toISOString() };
-  all.unshift(newReview);
-  storage.set('lt_reviews', all);
-  return newReview;
-}
-
-// ── Bookings ─────────────────────────────────────────────────────
-export function createBooking(booking) {
-  const bookings = storage.get('lt_bookings') || [];
-  const newBooking = { ...booking, id: `LT-${Date.now()}`, status: 'confirmed', createdAt: new Date().toISOString() };
-  bookings.unshift(newBooking);
-  storage.set('lt_bookings', bookings);
-  storage.set('lt_last_booking', newBooking);
-  return newBooking;
-}
-
-export function getUserBookings() {
-  const user = getCurrentUser();
-  if (!user) return [];
-  const all = storage.get('lt_bookings') || [];
-  return all.filter(b => b.userId === user.id);
-}
-
-export function getLastBooking() { return storage.get('lt_last_booking'); }
-
-// ── Wishlist ─────────────────────────────────────────────────────
-export function getWishlist() { return storage.get('lt_wishlist') || []; }
-export function toggleWishlist(id) {
-  const list = getWishlist();
-  const idx = list.indexOf(id);
-  if (idx === -1) list.push(id); else list.splice(idx, 1);
-  storage.set('lt_wishlist', list);
-  return list.includes(id);
-}
-export function isWishlisted(id) { return getWishlist().includes(id); }
-
-// ── Toast ────────────────────────────────────────────────────────
+// ── Toast ─────────────────────────────────────────────────────
 export function showToast(title, msg = '', type = 'success') {
   let t = document.querySelector('.toast');
   if (!t) { t = document.createElement('div'); t.className = 'toast'; document.body.appendChild(t); }
@@ -113,16 +100,18 @@ export function showToast(title, msg = '', type = 'success') {
   setTimeout(() => t.classList.remove('show'), 4000);
 }
 
-// ── Stars HTML ───────────────────────────────────────────────────
+// ── Stars HTML ────────────────────────────────────────────────
 export function starsHTML(rating) {
-  return Array.from({ length: 5 }, (_, i) => `<span style="color:${i < Math.round(rating) ? '#fbbf24' : '#334155'};font-size:0.9rem">★</span>`).join('');
+  return Array.from({ length: 5 }, (_, i) =>
+    `<span style="color:${i < Math.round(rating) ? '#fbbf24' : '#334155'};font-size:0.9rem">★</span>`
+  ).join('');
 }
 
-// ── Average Rating ───────────────────────────────────────────────
+// ── Average Rating ────────────────────────────────────────────
 export function calcAvgRating(reviews) {
   if (!reviews.length) return 0;
   return (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1);
 }
 
-// ── Scroll to top ────────────────────────────────────────────────
+// ── Scroll to top ─────────────────────────────────────────────
 export function scrollTop() { window.scrollTo({ top: 0, behavior: 'smooth' }); }

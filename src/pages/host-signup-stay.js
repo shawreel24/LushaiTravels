@@ -1,4 +1,5 @@
-import { registerHost, showToast } from '../utils.js';
+import { signUpEmail, insertStay } from '../lib/supabase.js';
+import { refreshUserCache, showToast } from '../utils.js';
 
 let currentStep = 1;
 const totalSteps = 5;
@@ -269,24 +270,40 @@ export function initHostSignupStay() {
   });
 }
 
-function submitListing() {
+async function submitListing() {
+  const nextBtn = document.getElementById('next-btn');
+  if (nextBtn) { nextBtn.disabled = true; nextBtn.textContent = '⏳ Submitting…'; }
   try {
-    registerHost({
-      name: formData.name, email: formData.email, phone: formData.phone, password: formData.password,
-      avatar: formData.name?.charAt(0).toUpperCase(),
-      listing: {
-        name: formData.propName, type: formData.propType, address: formData.address,
-        district: formData.district, rooms: formData.rooms, maxGuests: formData.maxGuests,
-        price: formData.price, amenities: formData.amenities, description: formData.description,
-        images: formData.images, checkIn: formData.checkIn, checkOut: formData.checkOut,
-        rules: formData.rules?.split('\n').filter(Boolean), cancellation: formData.cancellation,
-      }
+    // 1. Sign up the host account (or sign in if already exists)
+    await signUpEmail({ email: formData.email, password: formData.password, fullName: formData.name, phone: formData.phone });
+    await refreshUserCache();
+
+    // 2. Insert the stay listing
+    await insertStay({
+      name:        formData.propName,
+      type:        formData.propType,
+      location:    formData.address,
+      district:    formData.district,
+      price:       parseInt(formData.price),
+      rooms:       parseInt(formData.rooms),
+      max_guests:  parseInt(formData.maxGuests),
+      amenities:   formData.amenities || [],
+      description: formData.description,
+      images:      formData.images || [],
+      cover_image: formData.images?.[0] || '',
+      check_in:    formData.checkIn,
+      check_out:   formData.checkOut,
+      rules:       formData.rules?.split('\n').filter(Boolean) || [],
+      verified:    true,
+      top_rated:   false,
     });
+
     currentStep = 1;
     uploadedImages = [];
-    showToast('Listing submitted for review! 🎉', 'We\'ll review within 48 hours.');
+    showToast('Listing live! 🎉', 'Your stay is now visible to travellers.');
     setTimeout(() => window.router.navigate('/host-dashboard'), 800);
   } catch (e) {
-    showToast(e.message, '', 'error');
+    showToast(e.message || 'Submission failed', '', 'error');
+    if (nextBtn) { nextBtn.disabled = false; nextBtn.textContent = '🚀 Submit Listing'; }
   }
 }

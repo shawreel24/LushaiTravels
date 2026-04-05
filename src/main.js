@@ -17,7 +17,8 @@ import { renderHostSignupGuide, initHostSignupGuide } from './pages/host-signup-
 import { renderHostSignupTransport, initHostSignupTransport } from './pages/host-signup-transport.js';
 import { renderProfile, initProfile } from './pages/profile.js';
 import { renderHostDashboard, initHostDashboard } from './pages/host-dashboard.js';
-import { scrollTop, appHref, getRoutePathname } from './utils.js';
+import { scrollTop, appHref, getRoutePathname, refreshUserCache } from './utils.js';
+import { supabase } from './lib/supabase.js';
 
 // ── Router ─────────────────────────────────────────────────────────────────
 const routes = {
@@ -112,8 +113,14 @@ async function render(pathname, searchParams = new URLSearchParams()) {
   // Render navbar
   renderNavbar();
 
-  // Render page
-  content.innerHTML = route.render() || '';
+  // Render page — handle async render functions
+  try {
+    const html = await Promise.resolve(route.render());
+    content.innerHTML = html || '';
+  } catch (e) {
+    console.error('[render] page render error:', e);
+    content.innerHTML = `<div style="min-height:80vh;display:flex;align-items:center;justify-content:center;padding:120px 24px;text-align:center"><div><div style="font-size:4rem;margin-bottom:16px">⚠️</div><h2>Something went wrong</h2><p style="color:var(--text-muted);margin-bottom:24px">${e.message}</p><a href="${appHref('/')}" class="btn btn-primary" data-link>Go Home</a></div></div>`;
+  }
 
   // Render or hide footer
   if (route.footer) renderFooter(); else footerEl.innerHTML = '';
@@ -121,8 +128,12 @@ async function render(pathname, searchParams = new URLSearchParams()) {
   // Wire all data-link elements
   wireLinks();
 
-  // Init page
-  route.init?.();
+  // Init page (may be async)
+  try {
+    await route.init?.();
+  } catch (e) {
+    console.error('[render] page init error:', e);
+  }
 
   scrollTop();
 }
@@ -143,10 +154,25 @@ function handleLink(e) {
 // Expose router globally
 window.router = { navigate };
 
+// ── Auth state listener (handles Google OAuth redirect) ──────
+supabase.auth.onAuthStateChange(async (_event, session) => {
+  if (session) {
+    await refreshUserCache();
+  } else {
+    localStorage.removeItem('sb_cached_user');
+  }
+  // Re-render navbar if already mounted
+  try { renderNavbar(); } catch (_) {}
+});
+
 // Handle browser back/forward
 window.addEventListener('popstate', () => {
   render(getRoutePathname(location.pathname), new URLSearchParams(location.search));
 });
 
-// Boot
+// Boot — render immediately, refresh Supabase session in background
 render(getRoutePathname(location.pathname), new URLSearchParams(location.search));
+
+// Then refresh session in background (handles Google OAuth returning users)
+refreshUserCache().catch(() => {});
+
