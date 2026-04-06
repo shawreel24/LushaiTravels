@@ -84,8 +84,15 @@ export function renderNavbar() {
         menu.remove();
       });
     });
-    setTimeout(() => document.addEventListener('click', () => menu.remove(), { once: true }), 100);
-    menu.querySelector('#dd-logout')?.addEventListener('click', async () => { await logout(); menu.remove(); });
+    // Auto-close when clicking outside the menu
+    setTimeout(() => document.addEventListener('click', (ev) => {
+      if (!menu.contains(ev.target)) menu.remove();
+    }, { once: true }), 100);
+    menu.querySelector('#dd-logout')?.addEventListener('click', async (ev) => {
+      ev.stopPropagation(); // prevent the document listener from firing
+      menu.remove();
+      await logout();
+    });
   });
 
   document.getElementById('mobile-logout')?.addEventListener('click', async (e) => { e.preventDefault(); await logout(); });

@@ -45,8 +45,16 @@ export async function logout() {
   } catch (e) {
     console.warn('[logout] Supabase signOut error (ignored):', e.message);
   }
+  // Clear ALL possible session storage keys
   localStorage.removeItem('sb_cached_user');
-  window.router.navigate('/');
+  // Clear any Supabase auth tokens that may remain
+  Object.keys(localStorage)
+    .filter(k => k.startsWith('sb-') || k.startsWith('supabase.'))
+    .forEach(k => localStorage.removeItem(k));
+  // Use location.replace so the browser fully reloads the page,
+  // which guarantees a clean state (no stale navbar, no race conditions).
+  const homeUrl = import.meta.env.BASE_URL || '/';
+  window.location.replace(homeUrl);
 }
 
 // Populates the localStorage cache from a live Supabase session.
