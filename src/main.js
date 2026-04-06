@@ -17,6 +17,11 @@ import { renderHostSignupGuide, initHostSignupGuide } from './pages/host-signup-
 import { renderHostSignupTransport, initHostSignupTransport } from './pages/host-signup-transport.js';
 import { renderProfile, initProfile } from './pages/profile.js';
 import { renderHostDashboard, initHostDashboard } from './pages/host-dashboard.js';
+import { renderAbout, initAbout } from './pages/about.js';
+import { renderTravelTips, initTravelTips } from './pages/travel-tips.js';
+import { renderSafetyGuide, initSafetyGuide } from './pages/safety-guide.js';
+import { renderContact, initContact } from './pages/contact.js';
+import { renderPrivacyPolicy, initPrivacyPolicy } from './pages/privacy-policy.js';
 import { scrollTop, appHref, getRoutePathname, refreshUserCache } from './utils.js';
 import { supabase } from './lib/supabase.js';
 
@@ -36,6 +41,11 @@ const routes = {
   '/host-signup-transport': { render: renderHostSignupTransport, init: initHostSignupTransport, footer: false },
   '/profile': { render: renderProfile, init: initProfile, footer: true },
   '/host-dashboard': { render: renderHostDashboard, init: initHostDashboard, footer: true },
+  '/about': { render: renderAbout, init: initAbout, footer: true },
+  '/travel-tips': { render: renderTravelTips, init: initTravelTips, footer: true },
+  '/safety-guide': { render: renderSafetyGuide, init: initSafetyGuide, footer: true },
+  '/contact': { render: renderContact, init: initContact, footer: true },
+  '/privacy-policy': { render: renderPrivacyPolicy, init: initPrivacyPolicy, footer: true },
 };
 
 function matchRoute(pathname) {
