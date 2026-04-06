@@ -89,7 +89,7 @@ export function renderAbout() {
         </p>
         <div class="grid-3">
           ${[
-            { emoji: '🧑‍💻', name: 'Lalremruata', role: 'Founder & Developer', desc: 'A Mizo developer who built LushaiTrips from the ground up — because he got lost trying to find a homestay in Phawngpui and decided to fix that.' },
+            { emoji: '🧑‍💻', name: 'Isak Roluahpuia', role: 'Founder & Developer', desc: 'A Mizo developer who built LushaiTrips from the ground up — because he got lost trying to find a homestay in Phawngpui and decided to fix that.' },
             { emoji: '🏔️', name: 'Zosangliana', role: 'Head of Destinations', desc: 'A trekking enthusiast who has mapped every trail in the Lushai Hills. He personally scouts and verifies every destination on the platform.' },
             { emoji: '📸', name: 'Lalmuanpuii', role: 'Content & Photography', desc: 'A visual storyteller capturing Mizoram\'s beauty one frame at a time — her shots are what make you instantly book a trip.' },
           ].map(t => `
