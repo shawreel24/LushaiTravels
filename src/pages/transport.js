@@ -32,7 +32,17 @@ export async function initTransport() {
   if (!grid) return;
 
   try {
-    const transport = await fetchTransport();
+    // 10-second timeout so the spinner never hangs forever
+    const timeout = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Request timed out. Please check your connection.')), 10000)
+    );
+    const transport = await Promise.race([fetchTransport(), timeout]);
+
+    if (!transport.length) {
+      grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:60px;color:var(--text-muted)"><div style="font-size:3rem;margin-bottom:16px">🚌</div><p>No transport options are available right now.<br>Check back soon or <a href="/host-signup-transport" data-link style="color:var(--emerald-400)">list your vehicle</a>.</p></div>';
+      return;
+    }
+
     grid.innerHTML = transport.map(t => `
       <div class="card" data-href="/transport/${t.id}" style="cursor:pointer">
         <div class="card-img-wrap">
@@ -63,7 +73,11 @@ export async function initTransport() {
     );
   } catch (e) {
     console.error('Error loading transport:', e);
-    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-muted)">Failed to load transport.</div>';
+    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-muted)">
+      <div style="font-size:2.5rem;margin-bottom:12px">⚠️</div>
+      <p style="margin-bottom:16px">${e.message || 'Failed to load transport. Please try again.'}</p>
+      <button class="btn btn-outline btn-sm" onclick="window.router.navigate('/transport')">Retry</button>
+    </div>`;
   }
 }
 

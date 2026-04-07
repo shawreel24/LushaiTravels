@@ -32,7 +32,18 @@ export async function initGuides() {
   if (!grid) return;
 
   try {
-    const guides = await fetchGuides();
+    // 10-second timeout so the spinner never hangs forever
+    const timeout = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Request timed out. Please check your connection.')), 10000)
+    );
+    const guides = await Promise.race([fetchGuides(), timeout]);
+
+    if (!guides.length) {
+      grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:60px;color:var(--text-muted)"><div style="font-size:3rem;margin-bottom:16px">🧭</div><p>No guides are available right now.<br>Check back soon or <a href="/host-signup-guide" data-link style="color:var(--emerald-400)">register as a guide</a>.</p></div>';
+      wireLinks && wireLinks();
+      return;
+    }
+
     grid.innerHTML = guides.map(g => `
       <div class="card" data-href="/guide/${g.id}" style="cursor:pointer">
         <div class="card-img-wrap" style="height:240px">
@@ -62,7 +73,11 @@ export async function initGuides() {
     );
   } catch (e) {
     console.error('Error loading guides:', e);
-    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-muted)">Failed to load guides.</div>';
+    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-muted)">
+      <div style="font-size:2.5rem;margin-bottom:12px">⚠️</div>
+      <p style="margin-bottom:16px">${e.message || 'Failed to load guides. Please try again.'}</p>
+      <button class="btn btn-outline btn-sm" onclick="window.router.navigate('/guides')">Retry</button>
+    </div>`;
   }
 }
 

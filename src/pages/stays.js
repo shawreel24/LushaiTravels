@@ -40,11 +40,19 @@ export async function initStays() {
   };
 
   try {
-    allStays = await fetchStays();
+    // 10-second timeout so the spinner never hangs forever
+    const timeout = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Request timed out. Please check your connection.')), 10000)
+    );
+    allStays = await Promise.race([fetchStays(), timeout]);
     renderGrid(allStays);
   } catch (e) {
     console.error('Error loading stays:', e);
-    if (grid) grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-muted)">Failed to load stays. Please refresh.</div>';
+    if (grid) grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-muted)">
+      <div style="font-size:2.5rem;margin-bottom:12px">⚠️</div>
+      <p style="margin-bottom:16px">${e.message || 'Failed to load stays. Please try again.'}</p>
+      <button class="btn btn-outline btn-sm" onclick="window.router.navigate('/stays')">Retry</button>
+    </div>`;
   }
 
   document.querySelectorAll('.chip[data-type]').forEach(chip => {
