@@ -152,3 +152,19 @@ export const transport = [
     verified: true, available: true,
   },
 ];
+
+// Supabase-schema-compatible exports for instant page rendering
+export const seedGuides = guides.map(g => ({
+  ...g,
+  cover_image: g.coverImage,
+  reviews_count: g.reviews,
+  price_unit: g.priceUnit,
+}));
+
+export const seedTransport = transport.map(t => ({
+  ...t,
+  cover_image: t.coverImage,
+  reviews_count: t.reviews,
+  owner_name: t.owner,
+}));
+

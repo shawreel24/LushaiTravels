@@ -1,5 +1,6 @@
 import { fetchTransport } from '../lib/supabase.js';
 import { starsHTML, appHref } from '../utils.js';
+import { seedTransport } from '../data/services.js';
 
 export function renderTransport() {
   const H = appHref;
@@ -31,19 +32,9 @@ export async function initTransport() {
   const grid = document.getElementById('transport-grid');
   if (!grid) return;
 
-  try {
-    // 10-second timeout so the spinner never hangs forever
-    const timeout = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Request timed out. Please check your connection.')), 10000)
-    );
-    const transport = await Promise.race([fetchTransport(), timeout]);
-
-    if (!transport.length) {
-      grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:60px;color:var(--text-muted)"><div style="font-size:3rem;margin-bottom:16px">🚌</div><p>No transport options are available right now.<br>Check back soon or <a href="/host-signup-transport" data-link style="color:var(--emerald-400)">list your vehicle</a>.</p></div>';
-      return;
-    }
-
-    grid.innerHTML = transport.map(t => `
+  // Helper: render transport cards
+  const renderCards = (list) => {
+    grid.innerHTML = list.map(t => `
       <div class="card" data-href="/transport/${t.id}" style="cursor:pointer">
         <div class="card-img-wrap">
           <img src="${t.cover_image}" alt="${t.name}" loading="lazy" />
@@ -71,13 +62,21 @@ export async function initTransport() {
     grid.querySelectorAll('[data-href]').forEach(el =>
       el.addEventListener('click', () => window.router.navigate(el.dataset.href))
     );
+  };
+
+  // ① Render seed data INSTANTLY — no spinner
+  renderCards(seedTransport);
+
+  // ② Silently fetch live Supabase data in background
+  try {
+    const timeout = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('timeout')), 8000)
+    );
+    const liveTransport = await Promise.race([fetchTransport(), timeout]);
+    if (liveTransport && liveTransport.length) renderCards(liveTransport);
   } catch (e) {
-    console.error('Error loading transport:', e);
-    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-muted)">
-      <div style="font-size:2.5rem;margin-bottom:12px">⚠️</div>
-      <p style="margin-bottom:16px">${e.message || 'Failed to load transport. Please try again.'}</p>
-      <button class="btn btn-outline btn-sm" onclick="window.router.navigate('/transport')">Retry</button>
-    </div>`;
+    // Seed data already shown — silent failure is fine
+    console.warn('[transport] Live fetch failed, showing seed data:', e.message);
   }
 }
 

@@ -78,3 +78,12 @@ export const stays = [
     tags: ['romantic', 'lakefront', 'premium'],
   },
 ];
+
+// Supabase-schema-compatible version for instant page rendering
+export const seedStays = stays.map(s => ({
+  ...s,
+  cover_image: s.coverImage,
+  reviews_count: s.reviews,
+  max_guests: s.maxGuests,
+  top_rated: s.topRated,
+}));

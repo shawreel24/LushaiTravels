@@ -1,5 +1,6 @@
 import { fetchStays } from '../lib/supabase.js';
 import { starsHTML } from '../utils.js';
+import { seedStays } from '../data/stays.js';
 
 export function renderStays() {
   return `
@@ -25,47 +26,50 @@ export function renderStays() {
 
 export async function initStays() {
   let activeType = 'all';
-  let allStays = [];
+  let allStays = seedStays; // start with seed data
 
   const grid = document.getElementById('stays-grid');
 
   const renderGrid = (stays) => {
     if (!grid) return;
-    grid.innerHTML = stays.length
-      ? stays.map(stayCard).join('')
+    const filtered = activeType === 'all'
+      ? stays
+      : stays.filter(s => s.type?.toLowerCase() === activeType);
+    grid.innerHTML = filtered.length
+      ? filtered.map(stayCard).join('')
       : '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-muted)">No stays found.</div>';
     grid.querySelectorAll('[data-href]').forEach(el =>
       el.addEventListener('click', () => window.router.navigate(el.dataset.href))
     );
   };
 
-  try {
-    // 10-second timeout so the spinner never hangs forever
-    const timeout = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Request timed out. Please check your connection.')), 10000)
-    );
-    allStays = await Promise.race([fetchStays(), timeout]);
-    renderGrid(allStays);
-  } catch (e) {
-    console.error('Error loading stays:', e);
-    if (grid) grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-muted)">
-      <div style="font-size:2.5rem;margin-bottom:12px">⚠️</div>
-      <p style="margin-bottom:16px">${e.message || 'Failed to load stays. Please try again.'}</p>
-      <button class="btn btn-outline btn-sm" onclick="window.router.navigate('/stays')">Retry</button>
-    </div>`;
-  }
+  // ① Render seed data INSTANTLY — no spinner
+  renderGrid(allStays);
 
+  // ② Wire filter chips
   document.querySelectorAll('.chip[data-type]').forEach(chip => {
     chip.addEventListener('click', () => {
       document.querySelectorAll('.chip[data-type]').forEach(c => c.classList.remove('active'));
       chip.classList.add('active');
       activeType = chip.dataset.type;
-      const filtered = activeType === 'all'
-        ? allStays
-        : allStays.filter(s => s.type?.toLowerCase() === activeType);
-      renderGrid(filtered);
+      renderGrid(allStays);
     });
   });
+
+  // ③ Silently fetch live Supabase data in background
+  try {
+    const timeout = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('timeout')), 8000)
+    );
+    const liveStays = await Promise.race([fetchStays(), timeout]);
+    if (liveStays && liveStays.length) {
+      allStays = liveStays;
+      renderGrid(allStays);
+    }
+  } catch (e) {
+    // Seed data already shown — silent failure is fine
+    console.warn('[stays] Live fetch failed, showing seed data:', e.message);
+  }
 }
 
 function stayCard(s) {
