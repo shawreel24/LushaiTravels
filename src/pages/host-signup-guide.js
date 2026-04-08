@@ -21,6 +21,17 @@ function isTimeoutError(err) {
   return typeof err?.message === 'string' && err.message.toLowerCase().includes('timed out');
 }
 
+function getSelectedPhotoCount() {
+  return uploadedFiles.filter(Boolean).length;
+}
+
+function setPhotoStatus(message, color = 'var(--text-muted)') {
+  const el = document.getElementById('g-photo-status');
+  if (!el) return;
+  el.textContent = message;
+  el.style.color = color;
+}
+
 export function renderHostSignupGuide() {
   return `
     <div style="min-height:100vh;padding:100px 24px 60px;background:linear-gradient(135deg,var(--bg) 0%,var(--bg2) 50%,var(--bg3) 100%)">
@@ -98,6 +109,7 @@ export function renderHostSignupGuide() {
             <div style="font-size:0.8rem;color:var(--text-dim)">First photo = profile photo • JPG or PNG</div>
             <input type="file" id="g-photos" multiple accept="image/*" style="display:none" />
           </div>
+          <div id="g-photo-status" class="form-hint" style="margin-top:10px">No photos selected yet.</div>
           <div class="upload-preview" id="g-photo-preview" style="margin-top:12px"></div>
 
           <label class="check-item" style="margin-bottom:24px;margin-top:16px">
@@ -115,10 +127,15 @@ export function renderHostSignupGuide() {
 export function initHostSignupGuide() {
   uploadedImages = [];
   uploadedFiles  = [];
+  setPhotoStatus('No photos selected yet.');
 
   // ── Photo picker ─────────────────────────────────────────────
   document.getElementById('g-photos')?.addEventListener('change', e => {
-    [...e.target.files].forEach(file => {
+    const incomingFiles = [...e.target.files];
+    if (!incomingFiles.length) return;
+
+    setPhotoStatus(`Preparing ${incomingFiles.length} photo(s)...`, 'var(--emerald-400)');
+    incomingFiles.forEach(file => {
       const idx = uploadedFiles.length;
       uploadedFiles.push(file);
 
@@ -144,7 +161,15 @@ export function initHostSignupGuide() {
             uploadedImages.splice(idx, 1, null);
             uploadedFiles.splice(idx, 1, null);
             wrap.remove();
+            const remaining = getSelectedPhotoCount();
+            setPhotoStatus(
+              remaining ? `${remaining} photo(s) selected.` : 'No photos selected yet.',
+              remaining ? 'var(--emerald-400)' : 'var(--text-muted)'
+            );
           });
+
+          const selected = getSelectedPhotoCount();
+          setPhotoStatus(`${selected} photo(s) selected.`, 'var(--emerald-400)');
         };
         img.src = ev.target.result;
       };
@@ -225,6 +250,7 @@ export function initHostSignupGuide() {
 
       if (validFiles.length > 0) {
         if (btn) btn.textContent = '📤 Uploading photos…';
+        setPhotoStatus(`Uploading ${validFiles.length} photo(s)...`, 'var(--emerald-400)');
         console.log('[Guide] uploading', validFiles.length, 'images...');
 
         // Each image gets 15s before we skip it
@@ -239,6 +265,12 @@ export function initHostSignupGuide() {
         const results = await Promise.all(validFiles.map(uploadOne));
         imageUrls = results.filter(Boolean);
         console.log('[Guide] uploaded imageUrls:', imageUrls);
+        setPhotoStatus(
+          imageUrls.length === validFiles.length
+            ? `${imageUrls.length} photo(s) uploaded successfully.`
+            : `${imageUrls.length} of ${validFiles.length} photo(s) uploaded.`,
+          imageUrls.length ? 'var(--emerald-400)' : 'var(--text-muted)'
+        );
       }
 
       if (btn) btn.textContent = '💾 Saving profile…';
