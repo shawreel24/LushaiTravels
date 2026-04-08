@@ -1,4 +1,4 @@
-import { getSession, insertGuide, signInEmail, signUpEmail, uploadFileToStorage } from '../lib/supabase.js';
+import { getSession, insertGuide, signInEmail, supabase, uploadFileToStorage } from '../lib/supabase.js';
 import { refreshUserCache, showToast } from '../utils.js';
 
 let uploadedImages = []; // base64 previews for display only
@@ -21,6 +21,10 @@ function withTimeout(promise, ms, message) {
 
 function isTimeoutError(err) {
   return typeof err?.message === 'string' && err.message.toLowerCase().includes('timed out');
+}
+
+function isGuideAlreadySaved(guideRows) {
+  return Array.isArray(guideRows) && guideRows.length > 0;
 }
 
 function getSelectedPhotoCount() {
@@ -184,6 +188,17 @@ function renderPreparedPhotoCard(wrap, preview, index) {
   wrap.innerHTML = `<img src="${preview}" alt="upload" />${index === 0 ? '<div style="position:absolute;bottom:4px;left:4px;background:rgba(16,185,129,0.9);color:#fff;font-size:0.65rem;padding:2px 6px;border-radius:4px;font-weight:700">PROFILE</div>' : ''}<button class="remove-img">x</button>`;
 }
 
+async function verifyExistingGuideSubmission(email, phone) {
+  const { data } = await supabase
+    .from('guides')
+    .select('id')
+    .eq('email', email)
+    .eq('phone', phone)
+    .limit(1);
+
+  return isGuideAlreadySaved(data);
+}
+
 async function ensureGuideSession({ name, email, password, phone }) {
   let session = await withTimeout(
     getSession(),
@@ -215,11 +230,16 @@ async function ensureGuideSession({ name, email, password, phone }) {
   setButtonState('Creating account...');
 
   try {
-    const signupData = await withTimeout(
-      signUpEmail({ email, password, fullName: name, phone }),
+    const { data: signupData, error: signupError } = await withTimeout(
+      supabase.auth.signUp({
+        email,
+        password,
+        options: { data: { full_name: name } },
+      }),
       SIGNUP_TIMEOUT_MS,
       'Sign-up timed out. Please try again in a moment.'
     );
+    if (signupError) throw signupError;
 
     if (signupData?.session) return signupData.session;
 
@@ -237,7 +257,15 @@ async function ensureGuideSession({ name, email, password, phone }) {
       LOGIN_TIMEOUT_MS,
       'Login timed out. Please try again.'
     );
-    if (loginAfterSignup?.session) return loginAfterSignup.session;
+    if (loginAfterSignup?.session) {
+      await supabase.from('profiles').upsert({
+        id: loginAfterSignup.session.user.id,
+        full_name: name,
+        phone,
+        role: 'user',
+      });
+      return loginAfterSignup.session;
+    }
   } catch (signupError) {
     if (isExistingAccountError(signupError)) {
       setSubmitStatus('Account already exists. Signing you in...', 'var(--emerald-400)');
@@ -426,6 +454,8 @@ export function initHostSignupGuide() {
     const certs      = document.getElementById('g-certs')?.value?.split('\n').filter(Boolean);
     const agree      = document.getElementById('g-agree')?.checked;
 
+    let currentStage = 'starting';
+
     if (!name || !email || !phone || !password || !title || !bio || !price || !location || !experience || !languages.length || !specialties.length) {
       showToast('Please fill all required fields', '', 'error'); return;
     }
@@ -439,16 +469,20 @@ export function initHostSignupGuide() {
     setSubmitStatus('Starting guide registration...', 'var(--emerald-400)');
 
     try {
+      currentStage = 'auth';
       await ensureGuideSession({ name, email, password, phone });
 
       setSubmitStatus('Loading your account...', 'var(--emerald-400)');
-      await refreshUserCache();
+      refreshUserCache().catch(error => {
+        console.warn('[Guide Signup] background cache refresh failed:', error?.message || error);
+      });
 
       // ── 2. Upload images (best-effort, never blocks submit) ───
       const validFiles = uploadedFiles.filter(Boolean);
       let imageUrls = [];
 
       if (validFiles.length > 0) {
+        currentStage = 'upload';
         setButtonState('Uploading photos...');
         setSubmitStatus(`Uploading ${validFiles.length} photo(s)...`, 'var(--emerald-400)');
         setPhotoLoader(true, `Uploading 1 of ${validFiles.length} photo(s)...`);
@@ -482,6 +516,7 @@ export function initHostSignupGuide() {
       setSubmitStatus('Saving your guide profile...', 'var(--emerald-400)');
 
       // ── 3. Insert guide row ───────────────────────────────────
+      currentStage = 'save';
       await withTimeout(
         insertGuide({
           name, title, experience, languages, specialties,
@@ -504,7 +539,27 @@ export function initHostSignupGuide() {
       console.error('[Guide Signup] ERROR:', e);
       setPhotoLoader(false);
       if (isTimeoutError(e)) {
-        setSubmitStatus('The request took too long. Please retry in a moment.', '#f87171');
+        try {
+          if (currentStage === 'save' && await verifyExistingGuideSubmission(email, phone)) {
+            setSubmitStatus('Guide profile saved successfully.', 'var(--emerald-400)');
+            showToast('Guide application submitted', 'Your profile was saved. Redirecting to dashboard.');
+            setTimeout(() => window.router.navigate('/host-dashboard'), 800);
+            return;
+          }
+        } catch (checkErr) {
+          console.warn('[Guide Signup] timeout verification failed:', checkErr?.message || checkErr);
+        }
+
+        const timeoutMessage =
+          currentStage === 'auth'
+            ? 'Account setup took too long. If this email already has an account, log in first and then submit the guide form.'
+            : currentStage === 'upload'
+              ? 'Photo upload took too long. Try fewer or smaller photos, then submit again.'
+              : currentStage === 'save'
+                ? 'Saving your guide profile took too long. Please retry in a moment.'
+                : 'The request took too long. Please retry in a moment.';
+
+        setSubmitStatus(timeoutMessage, '#f87171');
       } else {
         setSubmitStatus(e.message || 'Guide registration failed.', '#f87171');
       }

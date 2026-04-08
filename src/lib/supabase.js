@@ -224,9 +224,10 @@ export async function insertStay(data) {
 }
 
 export async function insertGuide(data) {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not logged in');
-  const { data: row, error } = await supabase.from('guides').insert({ ...data, host_id: user.id, status: 'approved' }).select().single();
+  const { data: { session } } = await supabase.auth.getSession();
+  const hostId = session?.user?.id || null;
+  if (!hostId) throw new Error('Not logged in');
+  const { data: row, error } = await supabase.from('guides').insert({ ...data, host_id: hostId, status: 'approved' }).select().single();
   if (error) throw error;
   return row;
 }
