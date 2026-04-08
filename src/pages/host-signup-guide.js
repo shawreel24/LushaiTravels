@@ -4,12 +4,21 @@ import { refreshUserCache, showToast } from '../utils.js';
 let uploadedImages = []; // base64 previews for display only
 let uploadedFiles  = []; // original File objects for actual upload
 
+const SESSION_TIMEOUT_MS = 30000;
+const SIGNUP_TIMEOUT_MS = 60000;
+const SAVE_TIMEOUT_MS = 60000;
+const UPLOAD_TIMEOUT_MS = 30000;
+
 function withTimeout(promise, ms, message) {
   let timer;
   const timeout = new Promise((_, reject) => {
     timer = setTimeout(() => reject(new Error(message)), ms);
   });
   return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
+function isTimeoutError(err) {
+  return typeof err?.message === 'string' && err.message.toLowerCase().includes('timed out');
 }
 
 export function renderHostSignupGuide() {
@@ -173,7 +182,7 @@ export function initHostSignupGuide() {
       // ── 1. Auth ───────────────────────────────────────────────
       const { data: { session } } = await withTimeout(
         supabase.auth.getSession(),
-        15000,
+        SESSION_TIMEOUT_MS,
         'Session check timed out. Please retry.'
       );
       console.log('[Guide] session check:', session ? 'logged in' : 'no session');
@@ -184,7 +193,7 @@ export function initHostSignupGuide() {
           supabase.auth.signUp({
             email, password, options: { data: { full_name: name } },
           }),
-          25000,
+          SIGNUP_TIMEOUT_MS,
           'Sign-up timed out. Please try again in a moment.'
         );
         if (error) {
@@ -195,7 +204,7 @@ export function initHostSignupGuide() {
 
         const { data: fresh } = await withTimeout(
           supabase.auth.getSession(),
-          15000,
+          SESSION_TIMEOUT_MS,
           'Session refresh timed out. Please log in and retry.'
         );
         console.log('[Guide] post-signup session:', fresh.session ? 'exists' : 'null');
@@ -224,7 +233,7 @@ export function initHostSignupGuide() {
             console.warn('[Guide] image upload failed (skipping):', err.message);
             return null;
           }),
-          new Promise(res => setTimeout(() => { console.warn('[Guide] upload timeout, skipping image'); res(null); }, 15000)),
+          new Promise(res => setTimeout(() => { console.warn('[Guide] upload timeout, skipping image'); res(null); }, UPLOAD_TIMEOUT_MS)),
         ]);
 
         const results = await Promise.all(validFiles.map(uploadOne));
@@ -246,7 +255,7 @@ export function initHostSignupGuide() {
           phone, email,
           verified: true, available: true,
         }),
-        25000,
+        SAVE_TIMEOUT_MS,
         'Saving guide profile timed out. Please retry.'
       );
       console.log('[Guide] success!');
@@ -256,6 +265,24 @@ export function initHostSignupGuide() {
 
     } catch (e) {
       console.error('[Guide Signup] ERROR:', e);
+      if (isTimeoutError(e)) {
+        try {
+          const { supabase } = await import('../lib/supabase.js');
+          const { data: existing } = await supabase
+            .from('guides')
+            .select('id')
+            .eq('email', email)
+            .eq('phone', phone)
+            .limit(1);
+          if (existing?.length) {
+            showToast('Guide application submitted', 'Your profile was saved. Redirecting to dashboard.');
+            setTimeout(() => window.router.navigate('/host-dashboard'), 800);
+            return;
+          }
+        } catch (checkErr) {
+          console.warn('[Guide Signup] timeout verification failed:', checkErr?.message || checkErr);
+        }
+      }
       showToast(e.message || 'Submission failed. Please try again.', '', 'error');
       if (btn) { btn.disabled = false; btn.textContent = 'Submit Guide Application 🧭'; }
     }
