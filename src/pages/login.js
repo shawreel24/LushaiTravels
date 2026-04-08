@@ -1,8 +1,8 @@
-import { loginUser, showToast, appHref, refreshUserCache } from '../utils.js';
+import { loginUser, showToast, appHref, refreshUserCache, setCurrentUser } from '../utils.js';
 import { signInEmail } from '../lib/supabase.js';
 
-const LOGIN_TIMEOUT_MS = 30000;
-const SESSION_TIMEOUT_MS = 15000;
+const LOGIN_TIMEOUT_MS = 12000;
+const SESSION_TIMEOUT_MS = 5000;
 
 function withTimeout(promise, ms, message) {
   let timer;
@@ -14,6 +14,17 @@ function withTimeout(promise, ms, message) {
 
 function isTimeoutError(err) {
   return typeof err?.message === 'string' && err.message.toLowerCase().includes('timed out');
+}
+
+function cacheBasicSupabaseUser(user) {
+  if (!user) return;
+  setCurrentUser({
+    id: user.id,
+    email: user.email || '',
+    full_name: user.user_metadata?.full_name || user.user_metadata?.name || '',
+    phone: user.phone || '',
+    role: 'user',
+  });
 }
 
 export function renderLogin() {
@@ -63,16 +74,19 @@ export function initLogin() {
     }
 
     try {
-      await withTimeout(
+      if (btn) btn.textContent = 'Checking account...';
+
+      const { user } = await withTimeout(
         signInEmail({ email, password }),
         LOGIN_TIMEOUT_MS,
         'Login timed out. Please try again.'
       );
-      await withTimeout(
-        refreshUserCache(),
-        SESSION_TIMEOUT_MS,
-        'Login timed out while loading your profile.'
-      );
+
+      cacheBasicSupabaseUser(user);
+
+      if (btn) btn.textContent = 'Loading your account...';
+      await withTimeout(refreshUserCache(), SESSION_TIMEOUT_MS, 'Profile sync timed out.');
+
       showToast('Welcome back!');
       setTimeout(() => window.router.navigate('/'), 500);
       return;
@@ -86,7 +100,10 @@ export function initLogin() {
             'Login timed out. Please try again.'
           );
           if (session) {
-            await refreshUserCache();
+            cacheBasicSupabaseUser(session.user);
+            refreshUserCache().catch(err => {
+              console.warn('[login] background profile sync failed:', err?.message || err);
+            });
             showToast('Welcome back!');
             setTimeout(() => window.router.navigate('/'), 500);
             return;
