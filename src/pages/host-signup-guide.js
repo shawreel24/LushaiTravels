@@ -4,6 +4,14 @@ import { refreshUserCache, showToast } from '../utils.js';
 let uploadedImages = []; // base64 previews for display only
 let uploadedFiles  = []; // original File objects for actual upload
 
+function withTimeout(promise, ms, message) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(message)), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
 export function renderHostSignupGuide() {
   return `
     <div style="min-height:100vh;padding:100px 24px 60px;background:linear-gradient(135deg,var(--bg) 0%,var(--bg2) 50%,var(--bg3) 100%)">
@@ -73,8 +81,8 @@ export function renderHostSignupGuide() {
           </div>
 
           <div class="divider-h"></div>
-          <h3 style="margin-bottom:16px">📸 Profile &amp; Gallery Photos</h3>
-          <p style="color:var(--text-muted);font-size:0.9rem;margin-bottom:16px">Upload a clear profile photo and photos from your past guiding trips (min 2 photos)</p>
+          <h3 style="margin-bottom:16px">📸 Profile &amp; Gallery Photos <span style="font-size:0.85rem;font-weight:400;color:var(--text-dim)">(optional)</span></h3>
+          <p style="color:var(--text-muted);font-size:0.9rem;margin-bottom:16px">Upload a profile photo and photos from your trips (you can also add these later)</p>
           <div class="upload-zone" onclick="document.getElementById('g-photos').click()">
             <div style="font-size:2rem;margin-bottom:8px">📷</div>
             <div style="font-weight:600;margin-bottom:4px">Upload Photos</div>
@@ -83,7 +91,7 @@ export function renderHostSignupGuide() {
           </div>
           <div class="upload-preview" id="g-photo-preview" style="margin-top:12px"></div>
 
-          <label class="check-item" style="margin-bottom:24px">
+          <label class="check-item" style="margin-bottom:24px;margin-top:16px">
             <input type="checkbox" id="g-agree" />
             <label style="font-size:0.9rem">I certify all information is accurate and agree to LushaiTrips <a href="#" style="color:var(--emerald-400)">Guide Terms</a></label>
           </label>
@@ -105,7 +113,6 @@ export function initHostSignupGuide() {
       const idx = uploadedFiles.length;
       uploadedFiles.push(file);
 
-      // Generate a lightweight preview — the real File is uploaded at submit time
       const reader = new FileReader();
       reader.onload = ev => {
         const img = new Image();
@@ -136,7 +143,7 @@ export function initHostSignupGuide() {
     });
   });
 
-  // ── Submit button ─────────────────────────────────────────────
+  // ── Submit ────────────────────────────────────────────────────
   document.getElementById('submit-guide-btn')?.addEventListener('click', async () => {
     const name       = document.getElementById('g-name')?.value?.trim();
     const email      = document.getElementById('g-email')?.value?.trim();
@@ -152,79 +159,105 @@ export function initHostSignupGuide() {
     const certs      = document.getElementById('g-certs')?.value?.split('\n').filter(Boolean);
     const agree      = document.getElementById('g-agree')?.checked;
 
-    // Validation
     if (!name || !email || !phone || !password || !title || !bio || !price || !location || !experience || !languages.length || !specialties.length) {
       showToast('Please fill all required fields', '', 'error'); return;
     }
     if (!agree) { showToast('Please agree to the Guide Terms', '', 'error'); return; }
 
-    const validFiles = uploadedFiles.filter(Boolean);
-    if (validFiles.length < 2) { showToast('Please upload at least 2 photos', '', 'error'); return; }
-
     const btn = document.getElementById('submit-guide-btn');
     if (btn) { btn.disabled = true; btn.textContent = '⏳ Submitting…'; }
 
-    // Hard 40-second timeout — if Supabase hangs, we always get an error toast
-    const timeout = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Request timed out. Check your connection and try again.')), 40000)
-    );
-
     try {
       const { supabase } = await import('../lib/supabase.js');
-      await Promise.race([
-        _doGuideSubmit({ supabase, btn, name, email, phone, password, title, bio, price, location, experience, languages, specialties, certs, validFiles }),
-        timeout,
-      ]);
+
+      // ── 1. Auth ───────────────────────────────────────────────
+      const { data: { session } } = await withTimeout(
+        supabase.auth.getSession(),
+        15000,
+        'Session check timed out. Please retry.'
+      );
+      console.log('[Guide] session check:', session ? 'logged in' : 'no session');
+
+      if (!session) {
+        console.log('[Guide] attempting signUp...');
+        const { data, error } = await withTimeout(
+          supabase.auth.signUp({
+            email, password, options: { data: { full_name: name } },
+          }),
+          25000,
+          'Sign-up timed out. Please try again in a moment.'
+        );
+        if (error) {
+          console.error('[Guide] signUp error:', error);
+          throw error;
+        }
+        console.log('[Guide] signUp response:', data);
+
+        const { data: fresh } = await withTimeout(
+          supabase.auth.getSession(),
+          15000,
+          'Session refresh timed out. Please log in and retry.'
+        );
+        console.log('[Guide] post-signup session:', fresh.session ? 'exists' : 'null');
+
+        if (!fresh.session) {
+          throw new Error('Account created — please check your email to confirm your account, then log in and re-submit.');
+        }
+        if (data.user) {
+          await supabase.from('profiles').upsert({ id: data.user.id, full_name: name, phone, role: 'user' });
+        }
+      }
+
+      await refreshUserCache();
+
+      // ── 2. Upload images (best-effort, never blocks submit) ───
+      const validFiles = uploadedFiles.filter(Boolean);
+      let imageUrls = [];
+
+      if (validFiles.length > 0) {
+        if (btn) btn.textContent = '📤 Uploading photos…';
+        console.log('[Guide] uploading', validFiles.length, 'images...');
+
+        // Each image gets 15s before we skip it
+        const uploadOne = (file) => Promise.race([
+          uploadFileToStorage(file, 'guide-images').catch(err => {
+            console.warn('[Guide] image upload failed (skipping):', err.message);
+            return null;
+          }),
+          new Promise(res => setTimeout(() => { console.warn('[Guide] upload timeout, skipping image'); res(null); }, 15000)),
+        ]);
+
+        const results = await Promise.all(validFiles.map(uploadOne));
+        imageUrls = results.filter(Boolean);
+        console.log('[Guide] uploaded imageUrls:', imageUrls);
+      }
+
+      if (btn) btn.textContent = '💾 Saving profile…';
+
+      // ── 3. Insert guide row ───────────────────────────────────
+      console.log('[Guide] inserting guide row...');
+      await withTimeout(
+        insertGuide({
+          name, title, experience, languages, specialties,
+          price: parseInt(price), location, bio,
+          certifications: certs,
+          images:      imageUrls,
+          cover_image: imageUrls[0] || '',
+          phone, email,
+          verified: true, available: true,
+        }),
+        25000,
+        'Saving guide profile timed out. Please retry.'
+      );
+      console.log('[Guide] success!');
+
+      showToast('Guide application live! 🎉', 'Your profile is now visible to travellers.');
+      setTimeout(() => window.router.navigate('/host-dashboard'), 800);
+
     } catch (e) {
-      console.error('[Guide Signup]', e);
+      console.error('[Guide Signup] ERROR:', e);
       showToast(e.message || 'Submission failed. Please try again.', '', 'error');
       if (btn) { btn.disabled = false; btn.textContent = 'Submit Guide Application 🧭'; }
     }
   });
-}
-
-async function _doGuideSubmit({ supabase, btn, name, email, phone, password, title, bio, price, location, experience, languages, specialties, certs, validFiles }) {
-  // ── Step 1: Auth — sign up or reuse session ───────────────────
-  const { data: { session } } = await supabase.auth.getSession();
-
-  if (!session) {
-    const { data, error } = await supabase.auth.signUp({
-      email, password, options: { data: { full_name: name } },
-    });
-    if (error) throw error;
-
-    // After signUp, if no session exists it means email confirmation is required
-    // OR the email was already registered (Supabase returns fake success in both cases)
-    const { data: fresh } = await supabase.auth.getSession();
-    if (!fresh.session) {
-      throw new Error('Could not create account. The email may already be registered — please log in first, or use a different email.');
-    }
-    if (data.user) {
-      await supabase.from('profiles').upsert({ id: data.user.id, full_name: name, phone, role: 'user' });
-    }
-  }
-
-  await refreshUserCache();
-
-  // ── Step 2: Upload images directly (File → Storage, no base64) ──
-  if (btn) btn.textContent = '📤 Uploading photos…';
-  const imageUrls = await Promise.all(
-    validFiles.map(file => uploadFileToStorage(file, 'guide-images'))
-  );
-
-  if (btn) btn.textContent = '💾 Saving profile…';
-
-  // ── Step 3: Insert guide row — URLs only, never base64 blobs ──
-  await insertGuide({
-    name, title, experience, languages, specialties,
-    price: parseInt(price), location, bio,
-    certifications: certs,
-    images:      imageUrls,
-    cover_image: imageUrls[0] || '',
-    phone, email,
-    verified: true, available: true,
-  });
-
-  showToast('Guide application live! 🎉', 'Your profile is now visible to travellers.');
-  setTimeout(() => window.router.navigate('/host-dashboard'), 800);
 }
