@@ -61,7 +61,7 @@ function renderGuideCard(guide) {
   const displayReviews = guide.reviews || 0;
 
   return `
-    <div class="card" data-href="/guide/${guide.id}" style="cursor:pointer">
+    <a href="${appHref(`/guide/${guide.id}`)}" class="card" data-link style="cursor:pointer;display:block;color:inherit;text-decoration:none">
       <div class="card-img-wrap" style="height:240px">
         <img src="${guide.coverImage}" alt="${guide.name}" loading="lazy" style="object-position:top" />
         ${guide.verified ? `<div class="card-badge" style="background:rgba(16,185,129,0.9);color:#fff">VERIFIED</div>` : ''}
@@ -82,7 +82,7 @@ function renderGuideCard(guide) {
           <span class="btn btn-outline btn-sm">View & Book</span>
         </div>
       </div>
-    </div>
+    </a>
   `;
 }
 
@@ -155,13 +155,19 @@ function renderGuideDetailContent(guide) {
 }
 
 function attachGuideCardLinks(grid) {
-  grid.querySelectorAll('[data-href]').forEach(el => {
-    el.addEventListener('click', () => window.router.navigate(el.dataset.href));
+  grid.querySelectorAll('[data-link]').forEach(el => {
+    if (el.dataset.guideBound === 'true') return;
+    el.dataset.guideBound = 'true';
+    el.addEventListener('click', event => {
+      event.preventDefault();
+      window.router.navigate(el.getAttribute('href'));
+    });
   });
 }
 
 export function renderGuides() {
   const H = appHref;
+  const previewGuides = fallbackGuides.map(normalizeGuide);
   return `
     <section class="page-hero">
       <div class="container">
@@ -173,10 +179,7 @@ export function renderGuides() {
     <section class="section">
       <div class="container">
         <div class="grid-3" id="guides-grid">
-          <div class="page-loader" style="grid-column:1/-1">
-            <div class="loading-spinner"></div>
-            <div style="color:var(--text-muted)">Loading guides...</div>
-          </div>
+          ${previewGuides.map(renderGuideCard).join('')}
         </div>
         <div style="margin-top:60px;background:linear-gradient(135deg,rgba(16,185,129,0.1),rgba(245,158,11,0.05));border:1px solid rgba(16,185,129,0.2);border-radius:var(--radius-xl);padding:48px;text-align:center">
           <div style="font-size:2.5rem;margin-bottom:16px">Guide</div>
