@@ -1,4 +1,4 @@
-import { showToast, setCurrentUser } from '../utils.js';
+import { showToast, setCurrentUser, storage } from '../utils.js';
 
 let uploadedImages = [];
 let uploadedFiles = [];
@@ -11,6 +11,7 @@ const SAVE_TIMEOUT_MS = 60000;
 const UPLOAD_TIMEOUT_MS = 30000;
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const RECENT_TRANSPORT_STORAGE_KEY = 'lt_recent_transport';
 
 function withTimeout(promise, ms, message) {
   let timer;
@@ -232,6 +233,14 @@ async function insertTransportDirect(data, accessToken) {
 
   const rows = await parseSupabaseJson(response);
   return Array.isArray(rows) ? rows[0] : rows;
+}
+
+function cacheRecentTransportSubmission(item) {
+  if (!item?.id) return;
+  const existing = storage.get(RECENT_TRANSPORT_STORAGE_KEY);
+  const recentTransport = Array.isArray(existing) ? existing : [];
+  const deduped = [item, ...recentTransport.filter(entry => entry?.id !== item.id)];
+  storage.set(RECENT_TRANSPORT_STORAGE_KEY, deduped.slice(0, 8));
 }
 
 async function findExistingTransportSubmission(email, phone) {
@@ -745,7 +754,7 @@ export function initHostSignupTransport() {
       setButtonState('Saving listing...');
       setSubmitStatus('Saving your transport listing...', 'var(--emerald-400)');
 
-      await withTimeout(
+      const savedTransport = await withTimeout(
         insertTransportDirect({
           host_id: auth.userId,
           name: businessName,
@@ -766,6 +775,7 @@ export function initHostSignupTransport() {
         SAVE_TIMEOUT_MS,
         'Saving transport listing timed out. Please retry.'
       );
+      cacheRecentTransportSubmission(savedTransport);
 
       setSubmitStatus('Transport listing created successfully.', 'var(--emerald-400)');
       showToast('Transport listing live!', 'Your listing is now visible to travellers.');
@@ -780,6 +790,7 @@ export function initHostSignupTransport() {
             ? await findExistingTransportSubmission(email, phone)
             : null;
           if (existingTransport) {
+            cacheRecentTransportSubmission(existingTransport);
             setSubmitStatus('Transport listing saved successfully.', 'var(--emerald-400)');
             showToast('Transport listing submitted', 'Your listing was saved. Redirecting to dashboard.');
             setTimeout(() => window.router.navigate('/host-dashboard'), 800);

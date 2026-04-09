@@ -1,7 +1,9 @@
 import { getHostListings } from '../lib/supabase.js';
-import { getCurrentUser, appHref } from '../utils.js';
+import { getCurrentUser, appHref, storage } from '../utils.js';
 
 const HOST_LISTINGS_TIMEOUT_MS = 10000;
+const RECENT_GUIDES_STORAGE_KEY = 'lt_recent_guides';
+const RECENT_TRANSPORT_STORAGE_KEY = 'lt_recent_transport';
 
 function withTimeout(promise, ms, message) {
   let timer;
@@ -57,6 +59,47 @@ function renderListingCard(listing) {
       </div>
       <span class="${statusClass}">${statusText}</span>
     </div>
+  `;
+}
+
+function getCachedHostListings(user) {
+  const recentGuides = storage.get(RECENT_GUIDES_STORAGE_KEY);
+  const recentTransport = storage.get(RECENT_TRANSPORT_STORAGE_KEY);
+
+  const guides = Array.isArray(recentGuides)
+    ? recentGuides.filter(item => item?.host_id === user.id)
+    : [];
+  const transport = Array.isArray(recentTransport)
+    ? recentTransport.filter(item => item?.host_id === user.id)
+    : [];
+
+  return [
+    ...guides.map(item => normalizeHostListing(item, 'guide')),
+    ...transport.map(item => normalizeHostListing(item, 'transport')),
+  ];
+}
+
+function renderListingsState(listingsTab, listings, message = '') {
+  const listingsStat = document.getElementById('stat-listings');
+  const earningsStat = document.getElementById('stat-earnings');
+  if (listingsStat) listingsStat.textContent = listings.length.toString();
+  if (earningsStat) earningsStat.textContent = 'Rs 0';
+
+  if (!listings.length) {
+    listingsTab.innerHTML = `
+      <div style="text-align:center;padding:60px;color:var(--text-muted)">
+        <div style="font-size:4rem;margin-bottom:16px">🏠</div>
+        <h3 style="margin-bottom:12px">No listings yet</h3>
+        <p style="margin-bottom:24px">Your stay, guide, or transport listing will appear here once it is saved.</p>
+        ${message ? `<div style="font-size:0.82rem;color:var(--text-dim)">${message}</div>` : ''}
+      </div>
+    `;
+    return;
+  }
+
+  listingsTab.innerHTML = `
+    ${message ? `<div style="font-size:0.82rem;color:var(--text-dim);margin-bottom:14px">${message}</div>` : ''}
+    ${listings.map(renderListingCard).join('')}
   `;
 }
 
@@ -137,6 +180,11 @@ export async function initHostDashboard() {
   const listingsTab = document.getElementById('tab-listings');
   if (!listingsTab || !user?.id) return;
 
+  const cachedListings = getCachedHostListings(user);
+  if (cachedListings.length) {
+    renderListingsState(listingsTab, cachedListings, 'Showing your recent submissions while live listings load.');
+  }
+
   try {
     const { stays, guides, transport } = await withTimeout(
       getHostListings(user.id),
@@ -149,23 +197,13 @@ export async function initHostDashboard() {
       ...guides.map(item => normalizeHostListing(item, 'guide')),
       ...transport.map(item => normalizeHostListing(item, 'transport')),
     ];
-
-    const listingsStat = document.getElementById('stat-listings');
-    const earningsStat = document.getElementById('stat-earnings');
-    if (listingsStat) listingsStat.textContent = allListings.length.toString();
-    if (earningsStat) earningsStat.textContent = 'Rs 0';
-
-    listingsTab.innerHTML = allListings.length
-      ? allListings.map(renderListingCard).join('')
-      : `
-        <div style="text-align:center;padding:60px;color:var(--text-muted)">
-          <div style="font-size:4rem;margin-bottom:16px">🏠</div>
-          <h3 style="margin-bottom:12px">No listings yet</h3>
-          <p style="margin-bottom:24px">Your stay, guide, or transport listing will appear here once it is saved.</p>
-        </div>
-      `;
+    renderListingsState(listingsTab, allListings);
   } catch (error) {
     console.error('Host dashboard error:', error);
+    if (cachedListings.length) {
+      renderListingsState(listingsTab, cachedListings, 'Live listings are taking longer than expected, so recent saved submissions are shown for now.');
+      return;
+    }
     listingsTab.innerHTML = `
       <div style="text-align:center;padding:40px;color:var(--text-muted)">
         <div style="font-size:1rem;margin-bottom:8px">Could not load listings.</div>
