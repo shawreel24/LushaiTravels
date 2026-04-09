@@ -18,6 +18,79 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON, {
   },
 });
 
+const REST_TIMEOUT_MS = 4000;
+const SESSION_LOOKUP_TIMEOUT_MS = 1500;
+
+function withTimeout(promise, ms, message) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(message)), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
+function buildRestHeaders(accessToken = '') {
+  const headers = {
+    apikey: SUPABASE_ANON,
+  };
+
+  if (accessToken) {
+    headers.Authorization = `Bearer ${accessToken}`;
+  } else {
+    headers.Authorization = `Bearer ${SUPABASE_ANON}`;
+  }
+
+  return headers;
+}
+
+async function parseRestResponse(response) {
+  let data = null;
+  try {
+    data = await response.json();
+  } catch {
+    data = null;
+  }
+
+  if (!response.ok) {
+    throw new Error((data && (data.message || data.msg)) || 'Supabase request failed.');
+  }
+
+  return data;
+}
+
+async function fetchRestRows(table, query, { accessToken = '', timeoutMs = REST_TIMEOUT_MS } = {}) {
+  const url = `${SUPABASE_URL}/rest/v1/${table}?${query.toString()}`;
+  const response = await withTimeout(
+    fetch(url, { headers: buildRestHeaders(accessToken) }),
+    timeoutMs,
+    `${table} request timed out.`
+  );
+  const data = await parseRestResponse(response);
+  return Array.isArray(data) ? data : [];
+}
+
+async function fetchPublicApprovedRows(table, hostId) {
+  const query = new URLSearchParams({
+    select: '*',
+    host_id: `eq.${hostId}`,
+    status: 'eq.approved',
+    order: 'created_at.desc',
+  });
+
+  return fetchRestRows(table, query);
+}
+
+async function fetchOwnRows(table, hostId) {
+  const { data, error } = await withTimeout(
+    supabase.from(table).select('*').eq('host_id', hostId).order('created_at', { ascending: false }),
+    REST_TIMEOUT_MS,
+    `${table} request timed out.`
+  );
+
+  if (error) throw error;
+  return data || [];
+}
+
 // ── Auth Helpers ──────────────────────────────────────────────
 
 /** Returns the currently logged-in Supabase user (or null) */
@@ -162,15 +235,24 @@ export async function fetchGuideById(id) {
 // ── Transport ─────────────────────────────────────────────────
 
 export async function fetchTransport() {
-  const { data, error } = await supabase.from('transport').select('*').eq('status', 'approved').order('rating', { ascending: false });
-  if (error) throw error;
-  return data || [];
+  const query = new URLSearchParams({
+    select: '*',
+    status: 'eq.approved',
+    order: 'rating.desc',
+  });
+  return fetchRestRows('transport', query);
 }
 
 export async function fetchTransportById(id) {
-  const { data, error } = await supabase.from('transport').select('*').eq('id', id).single();
-  if (error) throw error;
-  return data;
+  const query = new URLSearchParams({
+    select: '*',
+    id: `eq.${id}`,
+    status: 'eq.approved',
+    limit: '1',
+  });
+  const rows = await fetchRestRows('transport', query);
+  if (!rows.length) throw new Error('Transport listing not found.');
+  return rows[0];
 }
 
 // ── Bookings ──────────────────────────────────────────────────
@@ -279,15 +361,39 @@ export async function uploadImageToStorage(dataUrl, bucket = 'guide-images') {
 export async function getHostListings(hostId = null) {
   const effectiveHostId = hostId || (await supabase.auth.getUser()).data?.user?.id || null;
   if (!effectiveHostId) return { stays: [], guides: [], transport: [] };
-  const [s, g, t] = await Promise.all([
-    supabase.from('stays').select('*').eq('host_id', effectiveHostId),
-    supabase.from('guides').select('*').eq('host_id', effectiveHostId),
-    supabase.from('transport').select('*').eq('host_id', effectiveHostId),
+
+  const session = await withTimeout(
+    supabase.auth.getSession(),
+    SESSION_LOOKUP_TIMEOUT_MS,
+    'Session lookup timed out.'
+  ).catch(() => null);
+
+  const canUseAuthenticatedReads = session?.data?.session?.user?.id === effectiveHostId;
+
+  const loadTable = async table => {
+    if (canUseAuthenticatedReads) {
+      try {
+        return await fetchOwnRows(table, effectiveHostId);
+      } catch (error) {
+        console.warn(`[host-listings] ${table} auth read failed, falling back to public rows:`, error.message);
+      }
+    }
+
+    try {
+      return await fetchPublicApprovedRows(table, effectiveHostId);
+    } catch (error) {
+      console.warn(`[host-listings] ${table} public read failed:`, error.message);
+      return [];
+    }
+  };
+
+  const [stays, guides, transport] = await Promise.all([
+    loadTable('stays'),
+    loadTable('guides'),
+    loadTable('transport'),
   ]);
-  if (s.error) throw s.error;
-  if (g.error) throw g.error;
-  if (t.error) throw t.error;
-  return { stays: s.data || [], guides: g.data || [], transport: t.data || [] };
+
+  return { stays, guides, transport };
 }
 
 // ── Reviews ───────────────────────────────────────────────────
