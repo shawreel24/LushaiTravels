@@ -276,14 +276,17 @@ export async function uploadImageToStorage(dataUrl, bucket = 'guide-images') {
   }
 }
 
-export async function getHostListings() {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { stays: [], guides: [], transport: [] };
+export async function getHostListings(hostId = null) {
+  const effectiveHostId = hostId || (await supabase.auth.getUser()).data?.user?.id || null;
+  if (!effectiveHostId) return { stays: [], guides: [], transport: [] };
   const [s, g, t] = await Promise.all([
-    supabase.from('stays').select('*').eq('host_id', user.id),
-    supabase.from('guides').select('*').eq('host_id', user.id),
-    supabase.from('transport').select('*').eq('host_id', user.id),
+    supabase.from('stays').select('*').eq('host_id', effectiveHostId),
+    supabase.from('guides').select('*').eq('host_id', effectiveHostId),
+    supabase.from('transport').select('*').eq('host_id', effectiveHostId),
   ]);
+  if (s.error) throw s.error;
+  if (g.error) throw g.error;
+  if (t.error) throw t.error;
   return { stays: s.data || [], guides: g.data || [], transport: t.data || [] };
 }
 
