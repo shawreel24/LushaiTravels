@@ -5,6 +5,7 @@ import { appHref, starsHTML } from '../utils.js';
 const guideCache = new Map();
 const GUIDE_PLACEHOLDER = 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=800&q=80';
 const GUIDE_FETCH_TIMEOUT_MS = 6000;
+const HIDDEN_GUIDE_IDS = new Set(['guide-zova', 'guide-mary', 'guide-rema']);
 
 function withTimeout(promise, ms, message) {
   let timer;
@@ -46,6 +47,10 @@ function normalizeGuide(guide) {
   };
 }
 
+function isVisibleGuide(guide) {
+  return !!guide?.id && !HIDDEN_GUIDE_IDS.has(guide.id);
+}
+
 function rememberGuides(list) {
   guideCache.clear();
   list.forEach(guide => guideCache.set(guide.id, guide));
@@ -53,7 +58,7 @@ function rememberGuides(list) {
 }
 
 function getFallbackGuide(id) {
-  return fallbackGuides.find(guide => guide.id === id) || null;
+  return fallbackGuides.find(guide => isVisibleGuide(guide) && guide.id === id) || null;
 }
 
 function renderGuideCard(guide) {
@@ -168,7 +173,7 @@ function attachGuideCardLinks(grid) {
 
 export function renderGuides() {
   const H = appHref;
-  const previewGuides = fallbackGuides.map(normalizeGuide);
+  const previewGuides = fallbackGuides.filter(isVisibleGuide).map(normalizeGuide);
   return `
     <section class="page-hero">
       <div class="container">
@@ -204,13 +209,13 @@ export async function initGuides() {
       GUIDE_FETCH_TIMEOUT_MS,
       'Guide list request timed out.'
     );
-    normalizedGuides = rememberGuides(rows.map(normalizeGuide));
+    normalizedGuides = rememberGuides(rows.filter(isVisibleGuide).map(normalizeGuide));
   } catch (error) {
     console.warn('[guides] falling back to static data:', error.message);
   }
 
   if (!normalizedGuides.length) {
-    normalizedGuides = rememberGuides(fallbackGuides.map(normalizeGuide));
+    normalizedGuides = rememberGuides(fallbackGuides.filter(isVisibleGuide).map(normalizeGuide));
   }
 
   if (!normalizedGuides.length) {
@@ -245,7 +250,7 @@ export async function initGuideDetail(id) {
       GUIDE_FETCH_TIMEOUT_MS,
       'Guide profile request timed out.'
     );
-    if (row) guide = normalizeGuide(row);
+    if (isVisibleGuide(row)) guide = normalizeGuide(row);
   } catch (error) {
     console.warn('[guide-detail] falling back to static data:', error.message);
   }

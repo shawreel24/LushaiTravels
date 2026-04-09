@@ -1,80 +1,4 @@
-export const guides = [
-  {
-    id: 'guide-zova',
-    name: 'Zova Lalchhuanawma',
-    avatar: 'ZL',
-    title: 'Expert Trekking & Wildlife Guide',
-    experience: '10 years',
-    languages: ['English', 'Mizo', 'Hindi'],
-    specialties: ['Phawngpui Trek', 'Wildlife Spotting', 'Bird Watching', 'Photography Tours'],
-    rating: 4.9, reviews: 88,
-    price: 1,
-    priceUnit: 'per day',
-    location: 'Aizawl (covers all districts)',
-    phone: '+91 98765 11111',
-    email: 'zova.guide@lushaitrips.com',
-    coverImage: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&q=80',
-    images: [
-      'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=800&q=80',
-      'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80',
-      'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800&q=80',
-    ],
-    bio: 'Born and raised in the highlands of Mizoram, Zova has led over 300 trekking expeditions across the Lushai Hills. He\'s passionate about protecting Mizoram\'s biodiversity and sharing it with travellers. A certified wilderness first responder and birding enthusiast.',
-    certifications: ['First Aid Certified', 'Wildlife Institute of India', 'Ministry of Tourism Certified'],
-    verified: true, available: true,
-    tags: ['trekking', 'wildlife', 'birding'],
-  },
-  {
-    id: 'guide-mary',
-    name: 'Mary Vanlalruati',
-    avatar: 'MV',
-    title: 'Cultural & Heritage Tour Guide',
-    experience: '7 years',
-    languages: ['English', 'Mizo', 'Hindi', 'Bengali'],
-    specialties: ['Aizawl City Tours', 'Mizo Culture', 'Traditional Weaving', 'Village Walks'],
-    rating: 4.8, reviews: 62,
-    price: 1200,
-    priceUnit: 'per day',
-    location: 'Aizawl',
-    phone: '+91 87654 22222',
-    email: 'mary.guide@lushaitrips.com',
-    coverImage: 'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=400&q=80',
-    images: [
-      'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=800&q=80',
-      'https://images.unsplash.com/photo-1486325212027-8081e485255e?w=800&q=80',
-      'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=800&q=80',
-    ],
-    bio: 'Mary holds a Master\'s degree in Mizo history and has been sharing her culture with visitors for 7 years. She can take you deep into the soul of Mizo traditions — from bamboo weaving to traditional music, from ancient rituals to modern Aizawl.',
-    certifications: ['Ministry of Tourism Certified', 'Heritage Interpreter (INTACH)'],
-    verified: true, available: true,
-    tags: ['culture', 'heritage', 'city-tour'],
-  },
-  {
-    id: 'guide-rema',
-    name: 'Rema Chhakchhuak',
-    avatar: 'RC',
-    title: 'Adventure Sports & River Guide',
-    experience: '5 years',
-    languages: ['English', 'Mizo'],
-    specialties: ['River Kayaking', 'Rappelling', 'Jungle Camping', 'Night Trekking'],
-    rating: 4.7, reviews: 41,
-    price: 1800,
-    priceUnit: 'per day',
-    location: 'Serchhip / South Mizoram',
-    phone: '+91 76543 33333',
-    email: 'rema.guide@lushaitrips.com',
-    coverImage: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&q=80',
-    images: [
-      'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=800&q=80',
-      'https://images.unsplash.com/photo-1503264116251-35a269479413?w=800&q=80',
-      'https://images.unsplash.com/photo-1551632811-561732d1e306?w=800&q=80',
-    ],
-    bio: 'Rema is the go-to guide for adrenaline seekers in Mizoram. He specialises in river kayaking on the pristine Tuipui and Tlawng rivers, rappelling near Vantawng Falls, and multi-day jungle camping expeditions.',
-    certifications: ['Swift Water Rescue Certified', 'Wilderness First Aid', 'Adventure Tourism Certified'],
-    verified: true, available: true,
-    tags: ['adventure', 'kayaking', 'camping'],
-  },
-];
+export const guides = [];
 
 export const transport = [
   {
@@ -123,7 +47,7 @@ export const transport = [
       'https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?w=800&q=80',
       'https://images.unsplash.com/photo-1507035895480-2b3156c31fc8?w=800&q=80',
     ],
-    description: 'Explore Mizoram the way it was meant to be explored — on two wheels. Our fleet of well-maintained Royal Enfields and Honda bikes are ideal for the winding mountain roads of Mizoram. Helmets, riding gear, and maps provided.',
+    description: 'Explore Mizoram the way it was meant to be explored - on two wheels. Our fleet of well-maintained Royal Enfields and Honda bikes are ideal for the winding mountain roads of Mizoram. Helmets, riding gear, and maps provided.',
     features: ['Helmets Included', 'Riding Gear', 'Route Maps', 'Breakdown Assistance', 'Delivery to Hotel'],
     verified: true, available: true,
   },
@@ -153,7 +77,6 @@ export const transport = [
   },
 ];
 
-// Supabase-schema-compatible exports for instant page rendering
 export const seedGuides = guides.map(g => ({
   ...g,
   cover_image: g.coverImage,
@@ -167,4 +90,3 @@ export const seedTransport = transport.map(t => ({
   reviews_count: t.reviews,
   owner_name: t.owner,
 }));
-
