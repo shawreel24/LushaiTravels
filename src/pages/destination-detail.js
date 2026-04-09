@@ -53,6 +53,18 @@ export function renderDestinationDetail(id) {
           <h3 style="margin-bottom:12px">About this Place</h3>
           <p style="margin-bottom:24px">${dest.description}</p>
 
+          ${dest.quickFacts?.length ? `
+            <h3 style="margin-bottom:16px">Quick Facts</h3>
+            <div class="grid-2" style="margin-bottom:32px">
+              ${dest.quickFacts.map(fact => `
+                <div class="card card-body">
+                  <div style="font-size:0.8rem;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px">${fact.label}</div>
+                  <div style="font-weight:700;font-size:1.05rem">${fact.value}</div>
+                </div>
+              `).join('')}
+            </div>
+          ` : ''}
+
           <!-- Highlights -->
           <h3 style="margin-bottom:16px">✨ Highlights</h3>
           <div class="amenities-grid" style="margin-bottom:32px">

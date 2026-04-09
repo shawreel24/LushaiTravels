@@ -4,14 +4,6 @@ export function renderNavbar() {
   const container = document.getElementById('navbar-container');
   const user = getCurrentUser();
   const H = appHref;
-
-  // Build avatar display
-  const avatarHtml = user
-    ? (user.avatar_url
-        ? `<img src="${user.avatar_url}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid var(--emerald-500)" />`
-        : `<span>${(user.full_name || user.fullName || user.email || '?').charAt(0).toUpperCase()}</span>`)
-    : '';
-
   container.innerHTML = `
     <nav id="navbar">
       <div class="container nav-inner">
@@ -26,7 +18,7 @@ export function renderNavbar() {
         </div>
         <div class="nav-cta">
           ${user ? `
-            <div class="nav-avatar" id="nav-user-btn" title="${user.full_name || user.fullName || user.email}">${avatarHtml}</div>
+            <div class="nav-avatar" id="nav-user-btn" title="${user.fullName || user.name}">${user.avatar || '👤'}</div>
           ` : `
             <a href="${H('/login')}" class="btn btn-secondary btn-sm" data-link>Log in</a>
             <a href="${H('/signup-user')}" class="btn btn-primary btn-sm" data-link>Sign up</a>
@@ -84,18 +76,11 @@ export function renderNavbar() {
         menu.remove();
       });
     });
-    // Auto-close when clicking outside the menu
-    setTimeout(() => document.addEventListener('click', (ev) => {
-      if (!menu.contains(ev.target)) menu.remove();
-    }, { once: true }), 100);
-    menu.querySelector('#dd-logout')?.addEventListener('click', async (ev) => {
-      ev.stopPropagation(); // prevent the document listener from firing
-      menu.remove();
-      await logout();
-    });
+    setTimeout(() => document.addEventListener('click', () => menu.remove(), { once: true }), 100);
+    menu.querySelector('#dd-logout')?.addEventListener('click', () => { logout(); });
   });
 
-  document.getElementById('mobile-logout')?.addEventListener('click', async (e) => { e.preventDefault(); await logout(); });
+  document.getElementById('mobile-logout')?.addEventListener('click', (e) => { e.preventDefault(); logout(); });
 
   // Active link (compare route path, not raw pathname)
   const here = getRoutePathname(location.pathname);
