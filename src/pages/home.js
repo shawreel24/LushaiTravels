@@ -1,9 +1,11 @@
 import { destinations, categories } from '../data/destinations.js';
 import { starsHTML, appHref } from '../utils.js';
 
+const HOME_EXCLUDED_IDS = new Set(['lengteng-wildlife']);
+
 export function renderHome() {
   const H = appHref;
-  const featured = destinations.slice(0, 6);
+  const featured = destinations.filter(d => !HOME_EXCLUDED_IDS.has(d.id)).slice(0, 6);
   return `
     <!-- Hero -->
     <section class="hero">

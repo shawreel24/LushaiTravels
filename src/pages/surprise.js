@@ -3,6 +3,7 @@ import { itineraries } from '../data/itineraries.js';
 import { stays } from '../data/stays.js';
 import { starsHTML } from '../utils.js';
 
+const SURPRISE_EXCLUDED_IDS = new Set(['lengteng-wildlife']);
 const filters = [
   { id: 'all', label: '✨ Any Vibe', icon: '🎲' },
   { id: 'adventure', label: '🧗 Adventure' },
@@ -14,6 +15,10 @@ const filters = [
 
 let activeFilter = 'all';
 let isRolling = false;
+
+function getSurpriseDestinations() {
+  return destinations.filter(d => !SURPRISE_EXCLUDED_IDS.has(d.id));
+}
 
 export function renderSurprise() {
   return `
@@ -83,11 +88,12 @@ function roll() {
     rolling.classList.add('hidden');
     btn.style.animation = 'float 3s ease-in-out infinite';
 
+    const availableDestinations = getSurpriseDestinations();
     const pool = activeFilter === 'all'
-      ? destinations
-      : destinations.filter(d => d.category === activeFilter || d.tags.includes(activeFilter));
+      ? availableDestinations
+      : availableDestinations.filter(d => d.category === activeFilter || d.tags.includes(activeFilter));
 
-    const dest = pool[Math.floor(Math.random() * pool.length)] || destinations[0];
+    const dest = pool[Math.floor(Math.random() * pool.length)] || availableDestinations[0] || destinations[0];
     const itin = itineraries.find(i => i.destinationId === dest.id) || itineraries[Math.floor(Math.random() * itineraries.length)];
     const stay = stays.find(s => s.id === itin?.stayId) || stays[Math.floor(Math.random() * stays.length)];
 

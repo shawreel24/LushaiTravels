@@ -3,6 +3,11 @@ import { starsHTML } from '../utils.js';
 
 let activeCategory = 'all';
 let searchQuery = '';
+const DISCOVERY_EXCLUDED_IDS = new Set(['lengteng-wildlife']);
+
+function getDiscoveryDestinations() {
+  return destinations.filter(d => !DISCOVERY_EXCLUDED_IDS.has(d.id));
+}
 
 export function renderDiscover() {
   return `
@@ -67,7 +72,7 @@ export function initDiscover() {
 }
 
 function getFiltered() {
-  return destinations.filter(d => {
+  return getDiscoveryDestinations().filter(d => {
     const matchCat = activeCategory === 'all' || d.category === activeCategory || d.tags.includes(activeCategory);
     const matchSearch = !searchQuery || d.name.toLowerCase().includes(searchQuery) || d.district.toLowerCase().includes(searchQuery) || d.type.toLowerCase().includes(searchQuery);
     return matchCat && matchSearch;
@@ -91,7 +96,7 @@ function renderGrid() {
 }
 
 function renderHiddenGems() {
-  const gems = destinations.filter(d => d.reviews < 50);
+  const gems = getDiscoveryDestinations().filter(d => d.reviews < 50);
   const grid = document.getElementById('hidden-gems-grid');
   if (!grid) return;
   grid.innerHTML = gems.slice(0, 4).map(d => `
