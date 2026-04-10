@@ -1,11 +1,12 @@
-import { destinations, categories } from '../data/destinations.js';
+import { loadDestinations } from '../lib/destination-store.js';
 import { starsHTML, appHref } from '../utils.js';
 
 const HOME_EXCLUDED_IDS = new Set(['lengteng-wildlife']);
 
-export function renderHome() {
+export async function renderHome() {
   const H = appHref;
-  const featured = destinations.filter(d => !HOME_EXCLUDED_IDS.has(d.id)).slice(0, 6);
+  const destinations = await loadDestinations();
+  const featured = destinations.filter((d) => !HOME_EXCLUDED_IDS.has(d.id)).slice(0, 6);
   const heroBackground = `${import.meta.env.BASE_URL}images/digilife-siaha-2cM78THYc4w-unsplash.jpg`;
   return `
     <!-- Hero -->

@@ -123,7 +123,7 @@ async function render(pathname, searchParams = new URLSearchParams()) {
   renderNavbar();
 
   // Render page
-  content.innerHTML = route.render() || '';
+  content.innerHTML = (await route.render()) || '';
 
   // Render or hide footer
   if (route.footer) renderFooter(); else footerEl.innerHTML = '';
@@ -132,7 +132,7 @@ async function render(pathname, searchParams = new URLSearchParams()) {
   wireLinks();
 
   // Init page
-  route.init?.();
+  await route.init?.();
 
   scrollTop();
 }

@@ -1,7 +1,6 @@
-import { destinations } from '../data/destinations.js';
+import { loadDestinations } from '../lib/destination-store.js';
 import { itineraries } from '../data/itineraries.js';
 import { stays } from '../data/stays.js';
-import { starsHTML } from '../utils.js';
 
 const SURPRISE_EXCLUDED_IDS = new Set(['lengteng-wildlife']);
 const filters = [
@@ -15,6 +14,7 @@ const filters = [
 
 let activeFilter = 'all';
 let isRolling = false;
+let destinations = [];
 
 function getSurpriseDestinations() {
   return destinations.filter(d => !SURPRISE_EXCLUDED_IDS.has(d.id));
@@ -59,7 +59,8 @@ export function renderSurprise() {
   `;
 }
 
-export function initSurprise() {
+export async function initSurprise() {
+  destinations = await loadDestinations();
   document.querySelectorAll('.chip[data-filter]').forEach(chip => {
     chip.addEventListener('click', () => {
       document.querySelectorAll('.chip[data-filter]').forEach(c => c.classList.remove('active'));

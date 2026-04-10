@@ -1,10 +1,10 @@
-import { destinations } from '../data/destinations.js';
+import { loadDestinationById } from '../lib/destination-store.js';
 import { stays } from '../data/stays.js';
 import { getReviews, addReview, starsHTML, calcAvgRating, isLoggedIn, getCurrentUser, showToast, isWishlisted, toggleWishlist, appHref } from '../utils.js';
 
-export function renderDestinationDetail(id) {
+export async function renderDestinationDetail(id) {
   const H = appHref;
-  const dest = destinations.find((d) => d.id === id);
+  const dest = await loadDestinationById(id);
   if (!dest) return `<div class="page-hero container"><h1>Destination not found</h1></div>`;
 
   const nearbyStays = stays.filter((s) => s.location.toLowerCase().includes(dest.district.toLowerCase())).slice(0, 2);
@@ -157,8 +157,8 @@ export function renderDestinationDetail(id) {
   `;
 }
 
-export function initDestinationDetail(id) {
-  const dest = destinations.find((d) => d.id === id);
+export async function initDestinationDetail(id) {
+  const dest = await loadDestinationById(id);
   if (!dest) return;
 
   setTimeout(() => {

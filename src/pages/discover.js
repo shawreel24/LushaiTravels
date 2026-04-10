@@ -1,8 +1,9 @@
-import { destinations, categories } from '../data/destinations.js';
+import { getDestinationCategories, loadDestinations } from '../lib/destination-store.js';
 import { starsHTML } from '../utils.js';
 
 let activeCategory = 'all';
 let searchQuery = '';
+let destinations = [];
 const DISCOVERY_EXCLUDED_IDS = new Set(['lengteng-wildlife']);
 
 function getDiscoveryDestinations() {
@@ -10,6 +11,7 @@ function getDiscoveryDestinations() {
 }
 
 export function renderDiscover() {
+  const categories = getDestinationCategories();
   return `
     <section class="page-hero">
       <div class="container">
@@ -52,7 +54,8 @@ export function renderDiscover() {
   `;
 }
 
-export function initDiscover() {
+export async function initDiscover() {
+  destinations = await loadDestinations();
   renderGrid();
   renderHiddenGems();
 

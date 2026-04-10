@@ -70,6 +70,7 @@ CREATE TABLE IF NOT EXISTS destinations (
   nearby_attractions TEXT[],
   duration           TEXT,
   category           TEXT,
+  quick_facts        JSONB DEFAULT '[]',
   created_at         TIMESTAMPTZ DEFAULT NOW()
 );
 

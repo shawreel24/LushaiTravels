@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build && node -e \"require('fs').copyFileSync('docs/index.html','docs/404.html')\"",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "sync:destinations": "node scripts/sync-destinations-to-supabase.mjs"
   },
   "devDependencies": {
     "vite": "^5.4.0"
