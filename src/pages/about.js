@@ -40,8 +40,8 @@ export function renderAbout() {
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
             ${[
-              { num: '50+', label: 'Hidden Destinations' },
-              { num: '200+', label: 'Happy Travelers' },
+              { num: '20+', label: 'Hidden Destinations' },
+              { num: '50+', label: 'Happy Travelers' },
               { num: '15+', label: 'Verified Local Hosts' },
               { num: '4.8★', label: 'Average Rating' },
             ].map(s => `

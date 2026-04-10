@@ -298,6 +298,9 @@ export const destinations = [
     coverImage: img('/images/626bcef048b4e_Beino-Caslte-(1).jpg'),
     images: [
       img('/images/626bcef048b4e_Beino-Caslte-(1).jpg'),
+      img('/images/124.jpg'),
+      img('/images/cover.jpg'),
+      img('/images/hg5yhb.jpg"'),
     ],
     description: 'Castle of Bawinu or Beino is a lesser-explored geological wonder on the Kolodyne (Kaladan or Chhimpuitui) River, often called the Grand Canyon of Mizoram. Towering rock formations rise dramatically beside crystal-clear water, creating a striking landscape for boat journeys, hiking, photography, and wildlife watching. The route is challenging and the formation is best visited in the dry season, with access commonly arranged from Lomasu to Saphaw by motorboat and with the help of a knowledgeable local guide.',
     highlights: ['Grand canyon-like rock formations', 'Motorboat journey on the Kolodyne', 'Wildlife and bird watching', 'Spectacular reflections and photography'],
