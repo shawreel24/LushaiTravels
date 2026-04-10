@@ -23,12 +23,17 @@ function normalizeInstagramReels(reels = [], fallbackTitle = 'Instagram Reel') {
   return reels
     .map((reel, index) => {
       if (typeof reel === 'string') {
-        return { url: reel, title: `${fallbackTitle} ${index + 1}` };
+        return {
+          url: reel,
+          title: `${fallbackTitle} ${index + 1}`,
+          thumbnail: '',
+        };
       }
 
       return {
         url: reel?.url || '',
         title: reel?.title || `${fallbackTitle} ${index + 1}`,
+        thumbnail: reel?.thumbnail || '',
       };
     })
     .map((reel) => ({
@@ -40,10 +45,10 @@ function normalizeInstagramReels(reels = [], fallbackTitle = 'Instagram Reel') {
 
 export function renderDestinationDetail(id) {
   const H = appHref;
-  const dest = destinations.find(d => d.id === id);
+  const dest = destinations.find((d) => d.id === id);
   if (!dest) return `<div class="page-hero container"><h1>Destination not found</h1></div>`;
 
-  const nearbyStays = stays.filter(s => s.location.toLowerCase().includes(dest.district.toLowerCase())).slice(0, 2);
+  const nearbyStays = stays.filter((s) => s.location.toLowerCase().includes(dest.district.toLowerCase())).slice(0, 2);
   const reviews = getReviews(`dest-${id}`);
   const avg = calcAvgRating(reviews);
   const instagramReels = normalizeInstagramReels(dest.instagramReels, `${dest.name} Reel`);
@@ -69,9 +74,7 @@ export function renderDestinationDetail(id) {
 
     <div class="container">
       <div class="detail-layout">
-        <!-- Left: Info -->
         <div>
-          <!-- Title -->
           <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:8px">
             <h1 style="font-size:clamp(1.8rem,4vw,2.8rem)">${dest.name}</h1>
             <button id="wishlist-btn" style="background:var(--glass);border:1px solid var(--glass-border);border-radius:50%;width:46px;height:46px;font-size:1.3rem;cursor:pointer;flex-shrink:0;transition:var(--transition)">${isWishlisted(`dest-${id}`) ? '❤️' : '🤍'}</button>
@@ -83,7 +86,7 @@ export function renderDestinationDetail(id) {
             <span style="color:var(--text-dim)">•</span>
             <span>⏱ ${dest.duration}</span>
             <span style="color:var(--text-dim)">•</span>
-            <span style="color:${{ Easy:'#10b981', Moderate:'#f59e0b', Hard:'#ef4444' }[dest.difficulty]}">● ${dest.difficulty}</span>
+            <span style="color:${{ Easy: '#10b981', Moderate: '#f59e0b', Hard: '#ef4444' }[dest.difficulty]}">● ${dest.difficulty}</span>
           </div>
 
           <div class="divider-h"></div>
@@ -94,17 +97,29 @@ export function renderDestinationDetail(id) {
             <h3 style="margin-bottom:16px">Instagram Reels</h3>
             <div class="instagram-reels-grid" style="margin-bottom:32px">
               ${instagramReels.map((reel, index) => `
-                <div class="card instagram-reel-card">
-                  <iframe
-                    class="instagram-reel-frame"
-                    src="${reel.embedUrl}"
-                    title="${reel.title || `${dest.name} Instagram Reel ${index + 1}`}"
-                    loading="lazy"
-                    allowfullscreen
-                    scrolling="no"
-                    frameborder="0"
-                  ></iframe>
-                </div>
+                <button
+                  type="button"
+                  class="card instagram-reel-card"
+                  data-instagram-reel-trigger
+                  data-reel-embed="${reel.embedUrl}"
+                  data-reel-title="${reel.title || `${dest.name} Reel ${index + 1}`}"
+                  aria-label="Play ${reel.title || `${dest.name} Reel ${index + 1}`}"
+                >
+                  <div class="instagram-reel-poster-wrap">
+                    <img
+                      class="instagram-reel-poster"
+                      src="${reel.thumbnail || dest.images[Math.min(index, dest.images.length - 1)] || dest.coverImage}"
+                      alt="${reel.title || `${dest.name} Reel ${index + 1}`}"
+                      loading="lazy"
+                    />
+                    <span class="instagram-reel-play" aria-hidden="true">▶</span>
+                    <span class="instagram-reel-badge">Instagram Reel</span>
+                  </div>
+                  <div class="instagram-reel-meta">
+                    <div class="instagram-reel-title">${reel.title || `${dest.name} Reel ${index + 1}`}</div>
+                    <div class="instagram-reel-hint">Tap to play here</div>
+                  </div>
+                </button>
               `).join('')}
             </div>
           ` : ''}
@@ -112,7 +127,7 @@ export function renderDestinationDetail(id) {
           ${dest.quickFacts?.length ? `
             <h3 style="margin-bottom:16px">Quick Facts</h3>
             <div class="grid-2" style="margin-bottom:32px">
-              ${dest.quickFacts.map(fact => `
+              ${dest.quickFacts.map((fact) => `
                 <div class="card card-body">
                   <div style="font-size:0.8rem;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px">${fact.label}</div>
                   <div style="font-weight:700;font-size:1.05rem">${fact.value}</div>
@@ -121,13 +136,11 @@ export function renderDestinationDetail(id) {
             </div>
           ` : ''}
 
-          <!-- Highlights -->
           <h3 style="margin-bottom:16px">✨ Highlights</h3>
           <div class="amenities-grid" style="margin-bottom:32px">
-            ${dest.highlights.map(h => `<div class="amenity-item"><span class="amenity-icon">✅</span><span class="amenity-label">${h}</span></div>`).join('')}
+            ${dest.highlights.map((h) => `<div class="amenity-item"><span class="amenity-icon">✅</span><span class="amenity-label">${h}</span></div>`).join('')}
           </div>
 
-          <!-- Best time & Nearby -->
           <div class="grid-2" style="margin-bottom:32px">
             <div class="card card-body">
               <div style="font-size:1.5rem;margin-bottom:8px">🌤</div>
@@ -137,20 +150,17 @@ export function renderDestinationDetail(id) {
             <div class="card card-body">
               <div style="font-size:1.5rem;margin-bottom:8px">🗺️</div>
               <div style="font-weight:700;margin-bottom:4px">Nearby Attractions</div>
-              <ul style="list-style:none;color:var(--text-muted);font-size:0.9rem">${dest.nearbyAttractions.map(n => `<li>• ${n}</li>`).join('')}</ul>
+              <ul style="list-style:none;color:var(--text-muted);font-size:0.9rem">${dest.nearbyAttractions.map((n) => `<li>• ${n}</li>`).join('')}</ul>
             </div>
           </div>
 
-          <!-- Map -->
           <h3 style="margin-bottom:16px">📍 Location</h3>
           <div id="dest-map" class="map-container" style="margin-bottom:32px"></div>
 
-          <!-- Tags -->
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:32px">
-            ${dest.tags.map(t => `<span class="tag">${t}</span>`).join('')}
+            ${dest.tags.map((t) => `<span class="tag">${t}</span>`).join('')}
           </div>
 
-          <!-- Reviews -->
           <div class="divider-h"></div>
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px">
             <h3>${avg > 0 ? `⭐ ${avg} · ` : ''}${reviews.length} Review${reviews.length !== 1 ? 's' : ''}</h3>
@@ -158,31 +168,29 @@ export function renderDestinationDetail(id) {
           </div>
 
           <div id="reviews-list">
-            ${reviews.length ? reviews.map(r => reviewCard(r)).join('') : `<p style="color:var(--text-muted)">No reviews yet. Be the first!</p>`}
+            ${reviews.length ? reviews.map((r) => reviewCard(r)).join('') : `<p style="color:var(--text-muted)">No reviews yet. Be the first!</p>`}
           </div>
 
-          <!-- Write Review (hidden) -->
           <div id="review-form" class="hidden" style="background:var(--glass);border:1px solid var(--glass-border);border-radius:var(--radius);padding:28px;margin-top:24px">
             <h4 style="margin-bottom:20px">Share Your Experience</h4>
             <div class="form-group">
               <label class="form-label">Rating</label>
               <div class="star-input" id="star-input">
-                ${[5,4,3,2,1].map(n => `<input type="radio" name="rating" id="r${n}" value="${n}"><label for="r${n}">★</label>`).join('')}
+                ${[5, 4, 3, 2, 1].map((n) => `<input type="radio" name="rating" id="r${n}" value="${n}"><label for="r${n}">★</label>`).join('')}
               </div>
             </div>
             <div class="form-group">
               <label class="form-label">Your Review</label>
-              <textarea class="form-textarea" id="review-text" placeholder="Tell others about your experience…"></textarea>
+              <textarea class="form-textarea" id="review-text" placeholder="Tell others about your experience..."></textarea>
             </div>
             <button class="btn btn-primary" id="submit-review-btn">Submit Review</button>
           </div>
 
-          <!-- Nearby Stays -->
           ${nearbyStays.length ? `
             <div class="divider-h"></div>
             <h3 style="margin-bottom:24px">🏡 Stays Near ${dest.name}</h3>
             <div class="grid-2">
-              ${nearbyStays.map(s => `
+              ${nearbyStays.map((s) => `
                 <div class="card" data-href="/stay/${s.id}" style="cursor:pointer">
                   <div class="card-img-wrap" style="height:160px"><img src="${s.coverImage}" alt="${s.name}" loading="lazy" /></div>
                   <div class="card-body">
@@ -198,13 +206,12 @@ export function renderDestinationDetail(id) {
           ` : ''}
         </div>
 
-        <!-- Right: Quick actions -->
         <div>
           <div class="booking-widget">
             <div style="font-family:var(--font-head);font-size:1.1rem;font-weight:700;margin-bottom:12px">🌄 Plan a Trip Here</div>
             <div style="font-size:0.9rem;color:var(--text-muted);margin-bottom:20px">Find stays, guides, and transport for ${dest.name}.</div>
             <a href="${H('/stays')}" class="btn btn-primary w-full" data-link style="justify-content:center;margin-bottom:12px">🏡 Browse Stays</a>
-            <a href="${H('/guides')}" class="btn btn-secondary w-full" data-link style="justify-content:center;margin-bottom:12px">👨‍🏫 Hire a Guide</a>
+            <a href="${H('/guides')}" class="btn btn-secondary w-full" data-link style="justify-content:center;margin-bottom:12px">🧑‍🏫 Hire a Guide</a>
             <a href="${H('/transport')}" class="btn btn-secondary w-full" data-link style="justify-content:center;margin-bottom:20px">🚗 Book Transport</a>
             <a href="${H('/surprise')}" class="btn btn-amber w-full" data-link style="justify-content:center">🎲 Surprise Me</a>
             <div class="divider-h"></div>
@@ -214,21 +221,35 @@ export function renderDestinationDetail(id) {
       </div>
     </div>
 
-    <!-- Lightbox -->
     <div class="lightbox" id="lightbox">
       <button class="lightbox-close" id="lb-close">✕</button>
       <button class="lightbox-prev" id="lb-prev">‹</button>
       <img id="lb-img" src="" alt="Gallery" />
       <button class="lightbox-next" id="lb-next">›</button>
     </div>
+
+    <div class="lightbox" id="instagram-reel-modal">
+      <button class="lightbox-close" id="instagram-reel-close">✕</button>
+      <div class="instagram-reel-modal-dialog">
+        <iframe
+          id="instagram-reel-player"
+          class="instagram-reel-modal-frame"
+          src=""
+          title="Instagram Reel"
+          loading="lazy"
+          allowfullscreen
+          scrolling="no"
+          frameborder="0"
+        ></iframe>
+      </div>
+    </div>
   `;
 }
 
 export function initDestinationDetail(id) {
-  const dest = destinations.find(d => d.id === id);
+  const dest = destinations.find((d) => d.id === id);
   if (!dest) return;
 
-  // Map
   setTimeout(() => {
     const mapEl = document.getElementById('dest-map');
     if (!mapEl || mapEl._leaflet_id) return;
@@ -237,7 +258,6 @@ export function initDestinationDetail(id) {
     L.marker([dest.lat, dest.lng]).addTo(map).bindPopup(`<b>${dest.name}</b><br>${dest.district} District`).openPopup();
   }, 100);
 
-  // Lightbox
   const imgs = dest.images;
   let currentIdx = 0;
   window.openLightbox = (idx) => {
@@ -246,10 +266,41 @@ export function initDestinationDetail(id) {
     document.getElementById('lightbox').classList.add('open');
   };
   document.getElementById('lb-close')?.addEventListener('click', () => document.getElementById('lightbox').classList.remove('open'));
-  document.getElementById('lb-prev')?.addEventListener('click', () => { currentIdx = (currentIdx - 1 + imgs.length) % imgs.length; document.getElementById('lb-img').src = imgs[currentIdx]; });
-  document.getElementById('lb-next')?.addEventListener('click', () => { currentIdx = (currentIdx + 1) % imgs.length; document.getElementById('lb-img').src = imgs[currentIdx]; });
+  document.getElementById('lb-prev')?.addEventListener('click', () => {
+    currentIdx = (currentIdx - 1 + imgs.length) % imgs.length;
+    document.getElementById('lb-img').src = imgs[currentIdx];
+  });
+  document.getElementById('lb-next')?.addEventListener('click', () => {
+    currentIdx = (currentIdx + 1) % imgs.length;
+    document.getElementById('lb-img').src = imgs[currentIdx];
+  });
 
-  // Wishlist
+  const reelModal = document.getElementById('instagram-reel-modal');
+  const reelPlayer = document.getElementById('instagram-reel-player');
+  const closeReelModal = () => {
+    reelModal?.classList.remove('open');
+    if (reelPlayer) {
+      reelPlayer.src = '';
+      reelPlayer.title = 'Instagram Reel';
+    }
+  };
+
+  document.querySelectorAll('[data-instagram-reel-trigger]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const embedUrl = button.dataset.reelEmbed;
+      if (!embedUrl || !reelPlayer || !reelModal) return;
+
+      reelPlayer.src = embedUrl;
+      reelPlayer.title = button.dataset.reelTitle || 'Instagram Reel';
+      reelModal.classList.add('open');
+    });
+  });
+
+  document.getElementById('instagram-reel-close')?.addEventListener('click', closeReelModal);
+  reelModal?.addEventListener('click', (event) => {
+    if (event.target === reelModal) closeReelModal();
+  });
+
   document.getElementById('wishlist-btn')?.addEventListener('click', () => {
     const btn = document.getElementById('wishlist-btn');
     const wishlisted = toggleWishlist(`dest-${id}`);
@@ -257,27 +308,34 @@ export function initDestinationDetail(id) {
     showToast(wishlisted ? 'Added to Wishlist' : 'Removed from Wishlist');
   });
 
-  // Review toggle
   document.getElementById('write-review-btn')?.addEventListener('click', () => {
-    if (!isLoggedIn()) { showToast('Login required', 'Please log in to write a review', 'error'); return; }
+    if (!isLoggedIn()) {
+      showToast('Login required', 'Please log in to write a review', 'error');
+      return;
+    }
     document.getElementById('review-form').classList.toggle('hidden');
   });
 
   document.getElementById('submit-review-btn')?.addEventListener('click', () => {
-    const rating = parseInt(document.querySelector('input[name="rating"]:checked')?.value || 0);
+    const rating = parseInt(document.querySelector('input[name="rating"]:checked')?.value || 0, 10);
     const text = document.getElementById('review-text')?.value?.trim();
-    if (!rating) { showToast('Please select a rating', '', 'error'); return; }
-    if (!text) { showToast('Please write your review', '', 'error'); return; }
+    if (!rating) {
+      showToast('Please select a rating', '', 'error');
+      return;
+    }
+    if (!text) {
+      showToast('Please write your review', '', 'error');
+      return;
+    }
     const user = getCurrentUser();
     addReview({ listingId: `dest-${id}`, rating, text, userName: user.fullName || user.name, userAvatar: user.avatar });
     showToast('Review submitted! ⭐');
     document.getElementById('review-form').classList.add('hidden');
-    const reviews = getReviews(`dest-${id}`);
-    document.getElementById('reviews-list').innerHTML = reviews.map(r => reviewCard(r)).join('');
+    const nextReviews = getReviews(`dest-${id}`);
+    document.getElementById('reviews-list').innerHTML = nextReviews.map((r) => reviewCard(r)).join('');
   });
 
-  // Card links
-  document.querySelectorAll('[data-href]').forEach(el => {
+  document.querySelectorAll('[data-href]').forEach((el) => {
     el.addEventListener('click', () => window.router.navigate(el.dataset.href));
   });
 }

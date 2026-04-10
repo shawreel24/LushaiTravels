@@ -281,8 +281,9 @@ export const destinations = [
     bestTime: 'November – March',
     nearbyAttractions: ['Saiha', 'Palak Dil Lake', 'Phawngpui'],
     instagramReels: ['https://www.instagram.com/reel/DSASkvPEpFI/?igsh=dTNkZ2xoNThsempo',
-      // Paste Instagram Reel URLs here later.
-      // Example: 'https://www.instagram.com/reel/SHORTCODE/'
+      // You can also use objects for a custom thumbnail and title.
+      // Example:
+      // { url: 'https://www.instagram.com/reel/SHORTCODE/', thumbnail: 'https://your-thumbnail-image.jpg', title: 'Tuipui River kayaking' }
     ],
     duration: '2-3 days',
     category: 'adventure',
