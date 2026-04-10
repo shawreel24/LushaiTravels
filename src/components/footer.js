@@ -33,11 +33,11 @@ export function renderFooter() {
           </div>
           <div>
             <div class="footer-heading">Company</div>
-            <a href="#" class="footer-link">About Mizoram</a>
-            <a href="#" class="footer-link">Travel Tips</a>
-            <a href="#" class="footer-link">Safety Guide</a>
-            <a href="#" class="footer-link">Contact Us</a>
-            <a href="#" class="footer-link">Privacy Policy</a>
+            <a href="${H('/about')}" class="footer-link" data-link>About LushaiTrips</a>
+            <a href="${H('/travel-tips')}" class="footer-link" data-link>Travel Tips</a>
+            <a href="${H('/safety-guide')}" class="footer-link" data-link>Safety Guide</a>
+            <a href="${H('/contact')}" class="footer-link" data-link>Contact Us</a>
+            <a href="${H('/privacy-policy')}" class="footer-link" data-link>Privacy Policy</a>
           </div>
         </div>
         <div class="footer-bottom">
