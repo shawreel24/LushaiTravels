@@ -309,25 +309,6 @@ p{line-height:1.7;color:var(--text-muted)}
 .amenity-icon{font-size:1.3rem}
 .amenity-label{font-size:0.85rem;color:var(--text-muted)}
 
-.instagram-reels-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,260px));gap:20px}
-.instagram-reel-card{padding:0;background:var(--bg2);border:1px solid var(--glass-border);text-align:left;overflow:hidden}
-.instagram-reel-card:hover{transform:translateY(-4px);box-shadow:var(--shadow-lg);border-color:rgba(16,185,129,0.3)}
-.instagram-reel-poster-wrap{position:relative;aspect-ratio:9/16;overflow:hidden;background:#000}
-.instagram-reel-poster{width:100%;height:100%;object-fit:cover;display:block}
-.instagram-reel-play{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:64px;height:64px;border-radius:50%;background:rgba(10,22,40,0.75);border:1px solid rgba(255,255,255,0.24);display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.3rem;backdrop-filter:blur(10px)}
-.instagram-reel-badge{position:absolute;left:14px;bottom:14px;padding:6px 10px;border-radius:999px;background:rgba(10,22,40,0.78);border:1px solid rgba(255,255,255,0.12);color:#fff;font-size:0.72rem;font-weight:700;letter-spacing:0.04em;text-transform:uppercase}
-.instagram-reel-meta{padding:14px 14px 16px}
-.instagram-reel-title{font-weight:700;color:var(--text);line-height:1.4}
-.instagram-reel-hint{margin-top:6px;font-size:0.85rem;color:var(--text-muted)}
-.instagram-reel-modal-dialog{width:min(92vw,420px);max-height:88vh;border-radius:var(--radius-lg);overflow:hidden;background:#000;box-shadow:var(--shadow-lg)}
-.instagram-reel-modal-frame{display:block;width:100%;aspect-ratio:9/16;min-height:min(88vh,760px);border:0;background:#000}
-@media(max-width:640px){
-  .instagram-reels-grid{grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
-  .instagram-reel-play{width:56px;height:56px}
-  .instagram-reel-modal-dialog{width:min(94vw,360px)}
-  .instagram-reel-modal-frame{min-height:min(82vh,620px)}
-}
-
 /* ── Tabs ── */
 .tabs{display:flex;gap:4px;background:var(--glass);border-radius:50px;padding:4px;margin-bottom:32px;width:fit-content}
 .tab-btn{padding:10px 24px;border-radius:50px;border:none;background:transparent;color:var(--text-muted);font-weight:600;font-size:0.9rem;cursor:pointer;transition:var(--transition)}

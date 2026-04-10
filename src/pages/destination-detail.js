@@ -2,47 +2,6 @@ import { destinations } from '../data/destinations.js';
 import { stays } from '../data/stays.js';
 import { getReviews, addReview, starsHTML, calcAvgRating, isLoggedIn, getCurrentUser, showToast, isWishlisted, toggleWishlist, appHref } from '../utils.js';
 
-function getInstagramEmbedUrl(url) {
-  if (!url) return '';
-
-  try {
-    const parsed = new URL(url);
-    if (!parsed.hostname.includes('instagram.com')) return '';
-    if (parsed.pathname.endsWith('/embed')) return url;
-
-    const match = parsed.pathname.match(/^\/(reel|p)\/([^/?#]+)/);
-    if (!match) return '';
-
-    return `https://www.instagram.com/${match[1]}/${match[2]}/embed`;
-  } catch {
-    return '';
-  }
-}
-
-function normalizeInstagramReels(reels = [], fallbackTitle = 'Instagram Reel') {
-  return reels
-    .map((reel, index) => {
-      if (typeof reel === 'string') {
-        return {
-          url: reel,
-          title: `${fallbackTitle} ${index + 1}`,
-          thumbnail: '',
-        };
-      }
-
-      return {
-        url: reel?.url || '',
-        title: reel?.title || `${fallbackTitle} ${index + 1}`,
-        thumbnail: reel?.thumbnail || '',
-      };
-    })
-    .map((reel) => ({
-      ...reel,
-      embedUrl: getInstagramEmbedUrl(reel.url),
-    }))
-    .filter((reel) => reel.embedUrl);
-}
-
 export function renderDestinationDetail(id) {
   const H = appHref;
   const dest = destinations.find((d) => d.id === id);
@@ -51,7 +10,6 @@ export function renderDestinationDetail(id) {
   const nearbyStays = stays.filter((s) => s.location.toLowerCase().includes(dest.district.toLowerCase())).slice(0, 2);
   const reviews = getReviews(`dest-${id}`);
   const avg = calcAvgRating(reviews);
-  const instagramReels = normalizeInstagramReels(dest.instagramReels, `${dest.name} Reel`);
 
   return `
     <!-- Gallery Hero -->
@@ -92,37 +50,6 @@ export function renderDestinationDetail(id) {
           <div class="divider-h"></div>
           <h3 style="margin-bottom:12px">About this Place</h3>
           <p style="margin-bottom:24px">${dest.description}</p>
-
-          ${instagramReels.length ? `
-            <h3 style="margin-bottom:16px">Instagram Reels</h3>
-            <div class="instagram-reels-grid" style="margin-bottom:32px">
-              ${instagramReels.map((reel, index) => `
-                <button
-                  type="button"
-                  class="card instagram-reel-card"
-                  data-instagram-reel-trigger
-                  data-reel-embed="${reel.embedUrl}"
-                  data-reel-title="${reel.title || `${dest.name} Reel ${index + 1}`}"
-                  aria-label="Play ${reel.title || `${dest.name} Reel ${index + 1}`}"
-                >
-                  <div class="instagram-reel-poster-wrap">
-                    <img
-                      class="instagram-reel-poster"
-                      src="${reel.thumbnail || dest.images[Math.min(index, dest.images.length - 1)] || dest.coverImage}"
-                      alt="${reel.title || `${dest.name} Reel ${index + 1}`}"
-                      loading="lazy"
-                    />
-                    <span class="instagram-reel-play" aria-hidden="true">▶</span>
-                    <span class="instagram-reel-badge">Instagram Reel</span>
-                  </div>
-                  <div class="instagram-reel-meta">
-                    <div class="instagram-reel-title">${reel.title || `${dest.name} Reel ${index + 1}`}</div>
-                    <div class="instagram-reel-hint">Tap to play here</div>
-                  </div>
-                </button>
-              `).join('')}
-            </div>
-          ` : ''}
 
           ${dest.quickFacts?.length ? `
             <h3 style="margin-bottom:16px">Quick Facts</h3>
@@ -227,22 +154,6 @@ export function renderDestinationDetail(id) {
       <img id="lb-img" src="" alt="Gallery" />
       <button class="lightbox-next" id="lb-next">›</button>
     </div>
-
-    <div class="lightbox" id="instagram-reel-modal">
-      <button class="lightbox-close" id="instagram-reel-close">✕</button>
-      <div class="instagram-reel-modal-dialog">
-        <iframe
-          id="instagram-reel-player"
-          class="instagram-reel-modal-frame"
-          src=""
-          title="Instagram Reel"
-          loading="lazy"
-          allowfullscreen
-          scrolling="no"
-          frameborder="0"
-        ></iframe>
-      </div>
-    </div>
   `;
 }
 
@@ -273,32 +184,6 @@ export function initDestinationDetail(id) {
   document.getElementById('lb-next')?.addEventListener('click', () => {
     currentIdx = (currentIdx + 1) % imgs.length;
     document.getElementById('lb-img').src = imgs[currentIdx];
-  });
-
-  const reelModal = document.getElementById('instagram-reel-modal');
-  const reelPlayer = document.getElementById('instagram-reel-player');
-  const closeReelModal = () => {
-    reelModal?.classList.remove('open');
-    if (reelPlayer) {
-      reelPlayer.src = '';
-      reelPlayer.title = 'Instagram Reel';
-    }
-  };
-
-  document.querySelectorAll('[data-instagram-reel-trigger]').forEach((button) => {
-    button.addEventListener('click', () => {
-      const embedUrl = button.dataset.reelEmbed;
-      if (!embedUrl || !reelPlayer || !reelModal) return;
-
-      reelPlayer.src = embedUrl;
-      reelPlayer.title = button.dataset.reelTitle || 'Instagram Reel';
-      reelModal.classList.add('open');
-    });
-  });
-
-  document.getElementById('instagram-reel-close')?.addEventListener('click', closeReelModal);
-  reelModal?.addEventListener('click', (event) => {
-    if (event.target === reelModal) closeReelModal();
   });
 
   document.getElementById('wishlist-btn')?.addEventListener('click', () => {
