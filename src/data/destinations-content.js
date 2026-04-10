@@ -311,6 +311,36 @@ export const destinationsContent = [
       { label: 'Weather Forecast', value: '23oC, Clouds' },
     ],
   },
+  {
+    id: 'paithar-tlang',
+    name: 'Paithar Tlang',
+    tagline: 'Glimpse of Paithar Tlang',
+    type: 'hill',
+    tags: ['nature', 'sightseeing', 'hiking'],
+    difficulty: 'Moderate',
+    district: 'Lawngtlai',
+    lat: 22.5298,
+    lng: 92.8943,
+    rating: 0,
+    reviews: 0,
+    coverImage: '/images/caption.jpg',
+    images: [
+      '/images/caption.jpg',
+    ],
+    description: 'Paithar Tlang is located in Paithar village in Lawngtlai District. It is about 15km from Lawngtlai town.',
+    highlights: ['Nature walks', 'Sightseeing', 'Hiking trails'],
+    bestTime: 'October - March',
+    nearbyAttractions: ['Lawngtlai town'],
+    duration: '1-2 days',
+    category: 'adventure',
+    quickFacts: [
+      { label: 'Altitude', value: '1302 mts' },
+      { label: 'From Aizawl', value: '263 kms' },
+      { label: 'Nearest Tourist Lodge', value: '20 kms' },
+      { label: 'Walking Distance', value: '60 minutes away' },
+      { label: 'Weather Forecast', value: '30oC, Clouds' },
+    ],
+  },
 ];
 
 export const categories = [
