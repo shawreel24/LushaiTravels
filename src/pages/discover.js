@@ -54,8 +54,16 @@ export function renderDiscover() {
   `;
 }
 
-export async function initDiscover() {
-  destinations = await loadDestinations();
+export function initDiscover() {
+  // Render immediately with local data (no await, no loading spinner)
+  destinations = loadDestinations({
+    onUpdate(freshList) {
+      // Silently re-render when Supabase data arrives
+      destinations = freshList;
+      renderGrid();
+      renderHiddenGems();
+    },
+  });
   renderGrid();
   renderHiddenGems();
 
@@ -73,6 +81,7 @@ export async function initDiscover() {
     renderGrid();
   });
 }
+
 
 function getFiltered() {
   return getDiscoveryDestinations().filter(d => {
