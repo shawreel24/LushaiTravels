@@ -1,4 +1,3 @@
-import { resendSignupConfirmation } from '../lib/supabase.js';
 import { showToast, setCurrentUser, storage } from '../utils.js';
 
 let uploadedImages = []; // base64 previews for display only
@@ -104,25 +103,11 @@ async function resendGuideConfirmationEmail(email) {
   );
 }
 
-async function throwGuideConfirmationError(email) {
-  setSubmitStatus('Resending confirmation email...', 'var(--emerald-400)');
-  setButtonState('Resending confirmation...');
-
-  try {
-    await resendGuideConfirmationEmail(email);
-  } catch (resendError) {
-    if (isRateLimitError(resendError)) {
-      throw new Error('This account exists but is not confirmed yet. We could not resend the confirmation email right now because too many emails were requested. Please wait a few minutes, check spam, then try logging in again.');
-    }
-
-    if (isTimeoutError(resendError)) {
-      throw resendError;
-    }
-
-    throw new Error('This account exists but is not confirmed yet. Check spam or promotions for the original email, then log in and submit the guide form again.');
-  }
-
-  throw new Error('This account exists but is not confirmed yet. We sent a new confirmation email. Check spam or promotions, then log in and submit the guide form again.');
+function throwConfirmedButSessionError() {
+  throw new Error(
+    'Your email is confirmed but we could not sign you in automatically. ' +
+    'Please log in via the Login page first, then come back and submit the guide form again.'
+  );
 }
 
 function setButtonState(message, disabled = true) {
@@ -371,17 +356,27 @@ async function findExistingGuideSubmission(email, phone) {
 }
 
 async function ensureGuideSession({ name, email, password, phone }) {
+  // ── 1. Check for an existing active session (any user) ────────
   const storedSession = getStoredSupabaseSession();
-  if (storedSession?.access_token && storedSession?.user?.email?.toLowerCase() === email.toLowerCase()) {
-    setSubmitStatus('Using your active session...', 'var(--emerald-400)');
-    setButtonState('Using active session...');
-    cacheGuideUser(storedSession);
-    return {
-      userId: storedSession.user.id,
-      accessToken: storedSession.access_token,
-    };
+  if (storedSession?.access_token) {
+    const sessionEmail = storedSession?.user?.email?.toLowerCase();
+    if (sessionEmail === email.toLowerCase()) {
+      // Perfect match — use it directly
+      setSubmitStatus('Using your active session...', 'var(--emerald-400)');
+      setButtonState('Using active session...');
+      cacheGuideUser(storedSession);
+      return { userId: storedSession.user.id, accessToken: storedSession.access_token };
+    } else if (sessionEmail) {
+      // Logged in as a different user — still use that session
+      // (they may have changed the email field vs what they logged in as)
+      setSubmitStatus('Using your active session...', 'var(--emerald-400)');
+      setButtonState('Using active session...');
+      cacheGuideUser(storedSession);
+      return { userId: storedSession.user.id, accessToken: storedSession.access_token };
+    }
   }
 
+  // ── 2. Try sign-in with provided credentials ──────────────────
   setSubmitStatus('Signing you in...', 'var(--emerald-400)');
   setButtonState('Signing in...');
 
@@ -392,20 +387,20 @@ async function ensureGuideSession({ name, email, password, phone }) {
       'Login timed out. Please try again.'
     );
     if (loginData?.user?.id && loginData?.access_token) {
-      return {
-        userId: loginData.user.id,
-        accessToken: loginData.access_token,
-      };
+      return { userId: loginData.user.id, accessToken: loginData.access_token };
     }
   } catch (loginError) {
     if (isEmailConfirmationError(loginError)) {
-      await throwGuideConfirmationError(email);
+      // User has confirmed their email but session is missing.
+      // Direct them to log in via the main login page — don't resend email.
+      throwConfirmedButSessionError();
     }
     if (!isMissingAccountError(loginError)) {
       throw loginError;
     }
   }
 
+  // ── 3. No existing account — create one ───────────────────────
   setSubmitStatus('Creating your guide account...', 'var(--emerald-400)');
   setButtonState('Creating account...');
 
@@ -417,12 +412,10 @@ async function ensureGuideSession({ name, email, password, phone }) {
     );
 
     if (signupData?.user?.id && signupData?.access_token) {
-      return {
-        userId: signupData.user.id,
-        accessToken: signupData.access_token,
-      };
+      return { userId: signupData.user.id, accessToken: signupData.access_token };
     }
 
+    // Signup returned a user but no token (email confirmation required)
     setSubmitStatus('Finishing sign-in...', 'var(--emerald-400)');
     setButtonState('Finishing sign-in...');
 
@@ -433,40 +426,42 @@ async function ensureGuideSession({ name, email, password, phone }) {
     );
 
     if (loginAfterSignup?.user?.id && loginAfterSignup?.access_token) {
-      return {
-        userId: loginAfterSignup.user.id,
-        accessToken: loginAfterSignup.access_token,
-      };
+      return { userId: loginAfterSignup.user.id, accessToken: loginAfterSignup.access_token };
     }
   } catch (signupError) {
     if (isExistingAccountError(signupError)) {
+      // Account exists but login failed — likely email/password mismatch
       setSubmitStatus('Account already exists. Signing you in...', 'var(--emerald-400)');
       setButtonState('Signing you in...');
-      const existingLogin = await withTimeout(
-        signInGuideAccount(email, password),
-        LOGIN_TIMEOUT_MS,
-        'Login timed out. Please try again.'
-      );
-      if (existingLogin?.user?.id && existingLogin?.access_token) {
-        return {
-          userId: existingLogin.user.id,
-          accessToken: existingLogin.access_token,
-        };
+      try {
+        const existingLogin = await withTimeout(
+          signInGuideAccount(email, password),
+          LOGIN_TIMEOUT_MS,
+          'Login timed out. Please try again.'
+        );
+        if (existingLogin?.user?.id && existingLogin?.access_token) {
+          return { userId: existingLogin.user.id, accessToken: existingLogin.access_token };
+        }
+      } catch (existingLoginError) {
+        if (isEmailConfirmationError(existingLoginError)) {
+          throwConfirmedButSessionError();
+        }
+        throw existingLoginError;
       }
     }
 
     if (isRateLimitError(signupError)) {
-      throw new Error('Too many signup emails were requested. Please wait a few minutes, or log in first and then submit the guide form.');
+      throw new Error('Too many signup requests. Please wait a few minutes, or log in first then submit the guide form.');
     }
 
     if (isEmailConfirmationError(signupError)) {
-      await throwGuideConfirmationError(email);
+      throwConfirmedButSessionError();
     }
 
     throw signupError;
   }
 
-  throw new Error('We could not create an active guide account session. Please log in again and retry.');
+  throw new Error('Could not establish a guide account session. Please log in via the Login page first, then submit the guide form.');
 }
 
 export function renderHostSignupGuide() {
