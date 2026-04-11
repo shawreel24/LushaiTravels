@@ -323,7 +323,7 @@ export const destinationsContent = [
     lng: 92.8943,
     rating: 0,
     reviews: 0,
-    coverImage: 'images/IMG_8694.JPG.jpeg',
+    coverImage: '',
     images: [
       'images/IMG_8689.JPG.jpeg',
       'images/IMG_8690.JPG.jpeg',

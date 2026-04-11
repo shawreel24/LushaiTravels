@@ -1,10 +1,12 @@
-import { signUpEmail, insertStay } from '../lib/supabase.js';
+import { signUpEmail, insertStay, uploadFileToStorage } from '../lib/supabase.js';
 import { refreshUserCache, showToast } from '../utils.js';
 
 let currentStep = 1;
 const totalSteps = 5;
 const formData = {};
-let uploadedImages = [];
+let uploadedImages = []; // base64 previews for display only
+let uploadedFiles  = []; // prepared File objects for actual upload
+let pendingPhotoTasks = 0;
 
 const stepLabels = ['Basic Info', 'Property', 'Stay Details', 'Photos', 'Rules & Submit'];
 
@@ -197,8 +199,8 @@ function collectStep(step) {
       if (!formData.rooms || !formData.maxGuests || !formData.price || !formData.description) { showToast('Please fill all required fields', '', 'error'); return false; }
       return true;
     case 4:
-      if (uploadedImages.length < 3) { showToast('Please upload at least 3 photos', '', 'error'); return false; }
-      formData.images = uploadedImages;
+      if (pendingPhotoTasks > 0) { showToast('Please wait for photos to finish preparing', '', 'error'); return false; }
+      if (uploadedFiles.filter(Boolean).length < 3) { showToast('Please upload at least 3 photos', '', 'error'); return false; }
       return true;
     case 5:
       formData.checkIn = document.getElementById('h-checkin')?.value;
@@ -220,45 +222,100 @@ function goToStep(step) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
+function canvasToJpegFile(canvas, originalName = 'stay-photo.jpg') {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(blob => {
+      if (!blob) { reject(new Error('Could not prepare the selected image.')); return; }
+      const safeBase = originalName.replace(/\.[^.]+$/, '').replace(/[^a-z0-9-_]+/gi, '-').toLowerCase() || 'stay-photo';
+      resolve(new File([blob], `${safeBase}.jpg`, { type: 'image/jpeg' }));
+    }, 'image/jpeg', 0.78);
+  });
+}
+
+async function prepareStayImage(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error(`Could not read ${file.name}.`));
+    reader.onload = event => {
+      const img = new Image();
+      img.onerror = () => reject(new Error(`Could not process ${file.name}.`));
+      img.onload = async () => {
+        try {
+          const canvas = document.createElement('canvas');
+          let { width, height } = img;
+          const MAX_SIZE = 800;
+          if (width > height && width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; }
+          else if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; }
+          canvas.width = Math.max(1, Math.round(width));
+          canvas.height = Math.max(1, Math.round(height));
+          canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+          const preview = canvas.toDataURL('image/jpeg', 0.72);
+          const preparedFile = await canvasToJpegFile(canvas, file.name);
+          resolve({ preview, preparedFile });
+        } catch (err) { reject(err); }
+      };
+      img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function syncPhotoCount() {
+  const selected = uploadedFiles.filter(Boolean).length;
+  const pending  = pendingPhotoTasks;
+  const count = document.getElementById('photo-count');
+  if (!count) return;
+  if (pending > 0) {
+    count.textContent = `${selected} photo(s) ready, ${pending} still preparing…`;
+  } else {
+    count.textContent = selected > 0 ? `${selected} photo(s) ready to upload` : 'No photos uploaded yet';
+  }
+}
+
 function bindStepEvents(step) {
   if (step === 4) {
-    document.getElementById('photo-input')?.addEventListener('change', e => {
-      [...e.target.files].forEach(file => {
-        const reader = new FileReader();
-        reader.onload = ev => {
-          const img = new Image();
-          img.onload = () => {
-            const canvas = document.createElement('canvas');
-            let { width, height } = img;
-            const MAX_SIZE = 800;
-            if (width > height && width > MAX_SIZE) {
-              height *= MAX_SIZE / width; width = MAX_SIZE;
-            } else if (height > MAX_SIZE) {
-              width *= MAX_SIZE / height; height = MAX_SIZE;
-            }
-            canvas.width = width; canvas.height = height;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0, width, height);
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-            
-            uploadedImages.push(dataUrl);
-            const preview = document.getElementById('photo-preview');
-            const count = document.getElementById('photo-count');
-            const wrap = document.createElement('div');
-            wrap.className = 'upload-img-wrap';
-            const idx = uploadedImages.length - 1;
-            wrap.innerHTML = `<img src="${dataUrl}" alt="upload" />${idx === 0 ? '<div style="position:absolute;bottom:4px;left:4px;background:rgba(16,185,129,0.9);color:#fff;font-size:0.65rem;padding:2px 6px;border-radius:4px;font-weight:700">COVER</div>' : ''}<button class="remove-img" data-idx="${idx}">✕</button>`;
-            preview?.appendChild(wrap);
-            if (count) count.textContent = uploadedImages.length + ' photo(s) uploaded';
-            wrap.querySelector('.remove-img')?.addEventListener('click', ev => {
-              uploadedImages.splice(idx, 1);
-              wrap.remove();
-              if (count) count.textContent = uploadedImages.length + ' photo(s) uploaded';
-            });
-          };
-          img.src = ev.target.result;
-        };
-        reader.readAsDataURL(file);
+    document.getElementById('photo-input')?.addEventListener('change', async e => {
+      const incomingFiles = [...e.target.files];
+      if (!incomingFiles.length) return;
+
+      const previewRoot = document.getElementById('photo-preview');
+      pendingPhotoTasks += incomingFiles.length;
+      syncPhotoCount();
+
+      incomingFiles.forEach(async file => {
+        const idx = uploadedFiles.length;
+        uploadedFiles.push(null);
+        uploadedImages[idx] = null;
+
+        // Placeholder card while preparing
+        const wrap = document.createElement('div');
+        wrap.className = 'upload-img-wrap';
+        wrap.style.cssText = 'display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px;background:rgba(255,255,255,0.03);border:1px solid var(--glass-border)';
+        wrap.innerHTML = `<div class="loading-spinner" style="width:24px;height:24px;border-width:2px;margin-bottom:8px"></div><div style="font-size:0.68rem;color:var(--text-muted);text-align:center">${file.name}</div>`;
+        previewRoot?.appendChild(wrap);
+
+        try {
+          const { preview, preparedFile } = await prepareStayImage(file);
+          uploadedImages[idx] = preview;
+          uploadedFiles[idx] = preparedFile;
+
+          wrap.style.cssText = '';
+          wrap.innerHTML = `<img src="${preview}" alt="upload" />${idx === 0 ? '<div style="position:absolute;bottom:4px;left:4px;background:rgba(16,185,129,0.9);color:#fff;font-size:0.65rem;padding:2px 6px;border-radius:4px;font-weight:700">COVER</div>' : ''}<button class="remove-img">✕</button>`;
+          wrap.querySelector('.remove-img')?.addEventListener('click', () => {
+            uploadedImages[idx] = null;
+            uploadedFiles[idx] = null;
+            wrap.remove();
+            syncPhotoCount();
+          });
+        } catch (err) {
+          uploadedImages[idx] = null;
+          uploadedFiles[idx] = null;
+          wrap.remove();
+          showToast(err.message || `Could not prepare ${file.name}.`, '', 'error');
+        } finally {
+          pendingPhotoTasks = Math.max(0, pendingPhotoTasks - 1);
+          syncPhotoCount();
+        }
       });
     });
   }
@@ -266,6 +323,8 @@ function bindStepEvents(step) {
 
 export function initHostSignupStay() {
   uploadedImages = [];
+  uploadedFiles  = [];
+  pendingPhotoTasks = 0;
   bindStepEvents(1);
 
   document.getElementById('next-btn')?.addEventListener('click', () => {
@@ -311,7 +370,29 @@ async function submitListing() {
     
     await refreshUserCache();
 
-    // 2. Insert the stay listing
+    // 2. Upload images to Supabase Storage (exactly like guide form)
+    const validFiles = uploadedFiles.filter(Boolean);
+    let imageUrls = [];
+
+    if (validFiles.length > 0) {
+      if (nextBtn) nextBtn.textContent = `⏳ Uploading photos…`;
+      for (const [index, file] of validFiles.entries()) {
+        if (nextBtn) nextBtn.textContent = `⏳ Uploading ${index + 1}/${validFiles.length}…`;
+        try {
+          const url = await Promise.race([
+            uploadFileToStorage(file, 'stay-images'),
+            new Promise((_, rej) => setTimeout(() => rej(new Error('upload timeout')), 30000)),
+          ]);
+          if (url) imageUrls.push(url);
+        } catch (uploadErr) {
+          console.warn('[Stay] image upload failed (skipping):', uploadErr.message);
+        }
+      }
+    }
+
+    if (nextBtn) nextBtn.textContent = '⏳ Saving listing…';
+
+    // 3. Insert the stay listing with real storage URLs
     await insertStay({
       name:        formData.propName,
       type:        formData.propType,
@@ -322,8 +403,8 @@ async function submitListing() {
       max_guests:  parseInt(formData.maxGuests),
       amenities:   formData.amenities || [],
       description: formData.description,
-      images:      formData.images || [],
-      cover_image: formData.images?.[0] || '',
+      images:      imageUrls,
+      cover_image: imageUrls[0] || '',
       check_in:    formData.checkIn,
       check_out:   formData.checkOut,
       rules:       formData.rules?.split('\n').filter(Boolean) || [],
@@ -333,6 +414,7 @@ async function submitListing() {
 
     currentStep = 1;
     uploadedImages = [];
+    uploadedFiles  = [];
     showToast('Listing live! 🎉', 'Your stay is now visible to travellers.');
     setTimeout(() => window.router.navigate('/host-dashboard'), 800);
   } catch (e) {
