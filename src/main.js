@@ -105,36 +105,53 @@ async function render(pathname, searchParams = new URLSearchParams()) {
   const content = document.getElementById('page-content');
   const footerEl = document.getElementById('footer-container');
 
-  // Booking route special case
-  if (pathname.startsWith('/book/')) {
-    const id = pathname.slice('/book/'.length);
-    content.innerHTML = renderBooking(id, searchParams);
-    footerEl.innerHTML = '';
+  try {
+    // Booking route special case
+    if (pathname.startsWith('/book/')) {
+      const id = pathname.slice('/book/'.length);
+      content.innerHTML = renderBooking(id, searchParams);
+      footerEl.innerHTML = '';
+      renderNavbar();
+      wireLinks();
+      initBooking(id, searchParams);
+      scrollTop();
+      return;
+    }
+
+    const { route } = matchRoute(pathname);
+
+    // Render navbar
     renderNavbar();
+
+    // Render page
+    content.innerHTML = (await route.render()) || '';
+
+    // Render or hide footer
+    if (route.footer) renderFooter(); else footerEl.innerHTML = '';
+
+    // Wire all data-link elements
     wireLinks();
-    initBooking(id, searchParams);
+
+    // Init page
+    await route.init?.();
+
     scrollTop();
-    return;
+  } catch (err) {
+    console.error('[Router] render error:', err);
+    renderNavbar();
+    content.innerHTML = `
+      <div style="min-height:80vh;display:flex;align-items:center;justify-content:center;text-align:center;padding:120px 24px">
+        <div>
+          <div style="font-size:4rem;margin-bottom:16px">⚠️</div>
+          <h2 style="margin-bottom:12px">Something went wrong</h2>
+          <p style="color:var(--text-muted);margin-bottom:8px">We hit an unexpected error loading this page.</p>
+          <p style="font-size:0.8rem;color:var(--text-muted);background:var(--glass);padding:8px 16px;border-radius:8px;margin-bottom:24px">${err?.message || 'Unknown error'}</p>
+          <a href="${appHref('/')}" class="btn btn-primary" data-link>Back to Home</a>
+        </div>
+      </div>
+    `;
+    wireLinks();
   }
-
-  const { route } = matchRoute(pathname);
-
-  // Render navbar
-  renderNavbar();
-
-  // Render page
-  content.innerHTML = (await route.render()) || '';
-
-  // Render or hide footer
-  if (route.footer) renderFooter(); else footerEl.innerHTML = '';
-
-  // Wire all data-link elements
-  wireLinks();
-
-  // Init page
-  await route.init?.();
-
-  scrollTop();
 }
 
 function wireLinks() {
