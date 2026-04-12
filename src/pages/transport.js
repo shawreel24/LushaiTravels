@@ -195,7 +195,7 @@ function renderTransportDetailContent(item) {
               <div class="form-group"><label class="form-label">Pickup Location</label><input type="text" class="form-input" id="pickup-loc" placeholder="e.g. Aizawl Airport" /></div>
               <div id="transport-total" style="background:var(--glass);border-radius:var(--radius-sm);padding:14px;margin-bottom:16px;font-size:0.9rem;color:var(--text-muted)">Select vehicle and dates to see total</div>
               <button class="btn btn-primary w-full" id="book-transport-btn" style="justify-content:center;padding:16px;margin-bottom:12px">Book Now -></button>
-              <p style="text-align:center;font-size:0.8rem;color:var(--text-muted)">Secured by Razorpay</p>
+              <p style="text-align:center;font-size:0.8rem;color:var(--text-muted)">Secure booking</p>
               <div class="divider-h"></div>
               <div style="font-size:0.85rem;color:var(--text-muted);margin-bottom:6px">Phone: ${item.phone || 'Available after booking'}</div>
               <div style="font-size:0.85rem;color:var(--text-muted)">Email: ${item.email || 'Available after booking'}</div>

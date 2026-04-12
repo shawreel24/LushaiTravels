@@ -174,7 +174,7 @@ export async function initStayDetail(id) {
             </div>
             <div id="price-breakdown" style="margin-bottom:16px"></div>
             <button class="btn btn-primary w-full" id="reserve-btn" style="justify-content:center;font-size:1rem;padding:16px">Reserve & Pay →</button>
-            <p style="text-align:center;font-size:0.8rem;color:var(--text-muted);margin-top:12px">🔒 Secured by Razorpay · You won't be charged yet</p>
+            <p style="text-align:center;font-size:0.8rem;color:var(--text-muted);margin-top:12px">🔒 Secure booking · You won't be charged yet</p>
 
             <div class="divider-h"></div>
             <div style="font-weight:700;margin-bottom:12px">Contact Host</div>

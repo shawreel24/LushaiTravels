@@ -37,7 +37,7 @@ export function renderPrivacyPolicy() {
           <!-- Intro box -->
           <div style="background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.2);border-radius:var(--radius);padding:24px">
             <p style="font-size:0.9rem;color:var(--text-muted);line-height:1.8;margin:0">
-              <strong style="color:var(--emerald-400)">TL;DR:</strong> We collect only what's needed to run the platform. We never sell your data. You can request deletion at any time. We use Supabase for authentication and Razorpay for payments — both are industry-grade secure platforms.
+              <strong style="color:var(--emerald-400)">TL;DR:</strong> We collect only what's needed to run the platform. We never sell your data. You can request deletion at any time. We use Supabase for authentication and secure, industry-grade platforms for all services.
             </p>
           </div>
 
@@ -72,7 +72,7 @@ export function renderPrivacyPolicy() {
                 <p style="color:var(--text-muted);line-height:1.8;margin-bottom:16px">We use your information to:</p>
                 <ul style="color:var(--text-muted);line-height:2;padding-left:20px">
                   <li>Create and manage your LushaiTrips account</li>
-                  <li>Process bookings and facilitate payments via Razorpay</li>
+                  <li>Process bookings and facilitate payments</li>
                   <li>Connect you with hosts, guides, and transport providers</li>
                   <li>Send booking confirmations, receipts, and trip reminders by email</li>
                   <li>Let you review your experiences and help other travelers</li>
@@ -93,7 +93,7 @@ export function renderPrivacyPolicy() {
                 <p style="color:var(--text-muted);line-height:1.8;margin-bottom:16px">We share data only in these limited circumstances:</p>
                 <ul style="color:var(--text-muted);line-height:2;padding-left:20px">
                   <li><strong style="color:var(--text)">With Hosts:</strong> When you book a stay or guide, we share your name and contact number with the host to coordinate your trip.</li>
-                  <li><strong style="color:var(--text)">With Razorpay:</strong> Your payment information is processed directly by Razorpay (PCI DSS Level 1 compliant). We do not store your card details.</li>
+                  <li><strong style="color:var(--text)">Payment Processing:</strong> Your payment information is processed securely via our payment provider (PCI DSS compliant). We do not store your card details.</li>
                   <li><strong style="color:var(--text)">With Supabase:</strong> Our backend database and auth provider (SOC 2 Type II certified). Your data is encrypted at rest and in transit.</li>
                   <li><strong style="color:var(--text)">Legal Requirements:</strong> We may disclose data if required by law, court order, or to protect the safety of users or the public.</li>
                 </ul>
@@ -133,7 +133,7 @@ export function renderPrivacyPolicy() {
                   <li>Passwords are hashed using industry-standard bcrypt algorithms — we never store plaintext passwords</li>
                   <li>Supabase encrypts all data at rest using AES-256</li>
                   <li>Google OAuth login means we never handle your Google password</li>
-                  <li>Payment data is handled exclusively by Razorpay — we store only transaction IDs, not card details</li>
+                  <li>Payment data is handled exclusively by our secure payment provider — we store only transaction IDs, not card details</li>
                   <li>Access to production databases is restricted to core team members on a need-to-know basis</li>
                 </ul>
                 <p style="color:var(--text-muted);line-height:1.8;margin-top:16px">Despite these measures, no internet transmission can be 100% secure. If you discover a security vulnerability, please report it responsibly to <strong style="color:var(--text)">security@lushaitrips.com</strong>.</p>
@@ -173,7 +173,6 @@ export function renderPrivacyPolicy() {
                 <div style="display:flex;flex-direction:column;gap:10px">
                   ${[
                     { name: 'Supabase', purpose: 'Authentication, database, and file storage', link: 'https://supabase.com/privacy' },
-                    { name: 'Razorpay', purpose: 'Payment processing', link: 'https://razorpay.com/privacy/' },
                     { name: 'Google OAuth', purpose: 'Social login via Google accounts', link: 'https://policies.google.com/privacy' },
                     { name: 'Leaflet / OpenStreetMap', purpose: 'Map rendering (no personal data shared)', link: 'https://www.openstreetmap.org/privacy' },
                   ].map(s => `

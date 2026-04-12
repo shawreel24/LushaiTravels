@@ -165,7 +165,7 @@ function renderGuideDetailContent(guide) {
                 </select>
               </div>
               <button class="btn btn-primary w-full" id="book-guide-btn" style="justify-content:center;padding:16px;margin-bottom:12px">Book Guide</button>
-              <p style="text-align:center;font-size:0.8rem;color:var(--text-muted)">Secured by Razorpay</p>
+              <p style="text-align:center;font-size:0.8rem;color:var(--text-muted)">Secure booking</p>
               <div class="divider-h"></div>
               <div style="font-size:0.85rem;color:var(--text-muted);margin-bottom:6px">Phone: ${guide.phone || 'Available after booking'}</div>
               <div style="font-size:0.85rem;color:var(--text-muted)">Email: ${guide.email || 'Available after booking'}</div>

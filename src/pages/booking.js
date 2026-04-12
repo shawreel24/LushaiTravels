@@ -3,12 +3,6 @@ import { guides } from '../data/services.js';
 import { transport } from '../data/services.js';
 import { isLoggedIn, getCurrentUser, createBooking, showToast, appHref } from '../utils.js';
 
-// RAZORPAY CONFIG
-// ⚠️ Replace 'rzp_test_YOUR_KEY_HERE' with your actual Razorpay Test Key
-// Get your key at: https://dashboard.razorpay.com/app/keys
-const RAZORPAY_KEY = 'rzp_test_SXRQlAUuikOAUn';
-const DEMO_MODE = RAZORPAY_KEY === 'rzp_test_YOUR_KEY_HERE'; // auto-detects demo mode
-
 export function renderBooking(id, params) {
   const checkin = params.get('checkin') || '';
   const checkout = params.get('checkout') || '';
@@ -33,20 +27,13 @@ export function renderBooking(id, params) {
     <section style="padding-bottom:80px">
       <div class="container">
         <div style="display:grid;grid-template-columns:1fr 400px;gap:40px;align-items:start">
-          <!-- Left: Payment form -->
+          <!-- Left: Booking form -->
           <div>
             ${!isLoggedIn() ? `
               <div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:var(--radius);padding:20px;margin-bottom:28px">
                 <div style="font-weight:700;margin-bottom:6px">⚠️ Login Required</div>
                 <div style="font-size:0.9rem;color:var(--text-muted);margin-bottom:12px">Please log in to complete your booking.</div>
                 <a href="${appHref('/login')}" class="btn btn-primary btn-sm" data-link>Log in to Continue</a>
-              </div>
-            ` : ''}
-
-            ${DEMO_MODE ? `
-              <div style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.3);border-radius:var(--radius);padding:20px;margin-bottom:28px">
-                <div style="font-weight:700;margin-bottom:6px;color:var(--emerald-400)">🔑 Razorpay Demo Mode</div>
-                <div style="font-size:0.85rem;color:var(--text-muted)">Payment is running in <strong>demo mode</strong>. To enable real payments, add your Razorpay test key in <code style="background:var(--glass);padding:2px 6px;border-radius:4px">/src/pages/booking.js</code>.<br><br>Get your key at: <a href="https://dashboard.razorpay.com/app/keys" target="_blank" style="color:var(--emerald-400)">dashboard.razorpay.com/app/keys</a></div>
               </div>
             ` : ''}
 
@@ -71,12 +58,12 @@ export function renderBooking(id, params) {
             </div>
 
             <div class="divider-h"></div>
-            <h3 style="margin-bottom:16px">Payment Method</h3>
+            <h3 style="margin-bottom:16px">Payment</h3>
             <div style="background:var(--glass);border:1px solid var(--glass-border);border-radius:var(--radius);padding:24px;margin-bottom:28px">
               <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
                 <span style="font-size:1.5rem">🔒</span>
                 <div>
-                  <div style="font-weight:700">Secure Payment via Razorpay</div>
+                  <div style="font-weight:700">Secure Booking</div>
                   <div style="font-size:0.85rem;color:var(--text-muted)">Your payment info is never stored on our servers</div>
                 </div>
               </div>
@@ -86,9 +73,9 @@ export function renderBooking(id, params) {
             </div>
 
             <button class="btn btn-primary btn-lg w-full" id="pay-btn" style="justify-content:center;font-size:1.1rem" ${!isLoggedIn() ? 'disabled style="opacity:0.5;cursor:not-allowed;justify-content:center;font-size:1.1rem"' : ''}>
-              ${DEMO_MODE ? '🎭 Complete Demo Booking' : `🔒 Pay ₹${total.toLocaleString()} with Razorpay`}
+              🔒 Confirm Booking — ₹${total.toLocaleString()}
             </button>
-            <p style="text-align:center;font-size:0.8rem;color:var(--text-muted);margin-top:10px">By booking, you agree to our Terms & Conditions and Cancellation Policy.</p>
+            <p style="text-align:center;font-size:0.8rem;color:var(--text-muted);margin-top:10px">By booking, you agree to our Terms &amp; Conditions and Cancellation Policy.</p>
           </div>
 
           <!-- Right: Summary card -->
@@ -151,36 +138,8 @@ export function initBooking(id, params) {
       notes: document.getElementById('pay-notes')?.value || '',
     };
 
-    if (DEMO_MODE) {
-      // Demo: simulate payment success
-      const booking = createBooking(bookingData);
-      showToast('Booking Confirmed! 🎉', `Ref: ${booking.id}`);
-      setTimeout(() => window.router.navigate('/booking-confirmed'), 800);
-      return;
-    }
-
-    // Real Razorpay
-    const options = {
-      key: RAZORPAY_KEY,
-      amount: total * 100, // paise
-      currency: 'INR',
-      name: 'LushaiTrips',
-      description: stay?.name || bookingName,
-      image: 'https://via.placeholder.com/100x100/065f46/ffffff?text=LT',
-      prefill: { name, email, contact: phone },
-      theme: { color: '#059669' },
-      handler: function(response) {
-        const booking = createBooking({ ...bookingData, razorpayPaymentId: response.razorpay_payment_id });
-        showToast('Payment Successful! 🎉', `Ref: ${booking.id}`);
-        setTimeout(() => window.router.navigate('/booking-confirmed'), 800);
-      },
-      modal: { ondismiss: () => showToast('Payment cancelled', '', 'error') },
-    };
-    try {
-      const rzp = new Razorpay(options);
-      rzp.open();
-    } catch (e) {
-      showToast('Razorpay not loaded', 'Please check your internet connection', 'error');
-    }
+    const booking = createBooking(bookingData);
+    showToast('Booking Confirmed! 🎉', `Ref: ${booking.id}`);
+    setTimeout(() => window.router.navigate('/booking-confirmed'), 800);
   });
 }

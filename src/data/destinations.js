@@ -21,3 +21,4 @@ export function resolveDestinationRecord(record) {
 export const destinations = destinationsContent.map((record) => resolveDestinationRecord(record));
 
 export { categories, destinationsContent };
+w

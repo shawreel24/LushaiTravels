@@ -142,7 +142,7 @@ export async function renderDestinationDetail(id) {
             <a href="${H('/transport')}" class="btn btn-secondary w-full" data-link style="justify-content:center;margin-bottom:20px">🚗 Book Transport</a>
             <a href="${H('/surprise')}" class="btn btn-amber w-full" data-link style="justify-content:center">🎲 Surprise Me</a>
             <div class="divider-h"></div>
-            <div style="font-size:0.85rem;color:var(--text-muted);text-align:center">🔒 Secure payments via Razorpay</div>
+            <div style="font-size:0.85rem;color:var(--text-muted);text-align:center">🔒 Secure booking</div>
           </div>
         </div>
       </div>

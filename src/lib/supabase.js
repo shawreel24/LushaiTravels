@@ -285,7 +285,7 @@ export async function createBooking(booking) {
     guest_email:   booking.guestEmail,
     guest_phone:   booking.guestPhone,
     notes:         booking.notes || '',
-    payment_id:    booking.razorpayPaymentId || null,
+    payment_id:    booking.paymentId || null,
     status:        'confirmed',
   };
   const { data, error } = await supabase.from('bookings').insert(row).select().single();

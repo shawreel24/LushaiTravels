@@ -122,7 +122,7 @@ export function renderContact() {
             { q: 'Can I cancel my booking?', a: 'Yes. Our standard cancellation policy allows free cancellation up to 72 hours before check-in. After that, a 50% cancellation charge applies. Each host may also have additional policies listed on their page.' },
             { q: 'I\'m a host — how do I list my property?', a: 'Click "Become a Host" in the navigation, choose your listing type (stay, guide, or transport), fill out the details, and our team will review and approve your listing within 2 business days.' },
             { q: 'Is LushaiTrips safe for solo women travelers?', a: 'Mizoram is one of the safest states in India for solo women travelers. All our hosts are verified, and we include safety tips and emergency contact information in every booking confirmation.' },
-            { q: 'What payment methods do you accept?', a: 'We accept all major UPI apps (PhonePe, GPay, Paytm), debit/credit cards, and net banking via Razorpay. International cards (Visa, Mastercard) are also accepted.' },
+            { q: 'What payment methods do you accept?', a: 'We accept all major UPI apps (PhonePe, GPay, Paytm), debit/credit cards, and net banking. International cards (Visa, Mastercard) are also accepted.' },
             { q: 'Do I need an Inner Line Permit?', a: 'Yes — Indian citizens must obtain a free ILP before visiting Mizoram. You can apply at mizoram.gov.in or at Mizoram House offices in major cities. Foreign nationals need a Protected Area Permit from the MHA.' },
           ].map((faq, i) => `
             <div class="faq-item" style="background:var(--glass);border:1px solid var(--glass-border);border-radius:var(--radius);overflow:hidden">
