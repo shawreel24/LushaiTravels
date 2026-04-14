@@ -2,7 +2,7 @@ import { defineConfig } from 'vite';
 
 // Must match the repository name segment in https://<user>.github.io/<repo>/
 // If you rename the repo, update this path.
-const repoBase = '/LushaiTravels/';
+const repoBase = '/LushaiTrips/';
 
 export default defineConfig({
   base: process.env.NODE_ENV === 'production' ? repoBase : '/',
