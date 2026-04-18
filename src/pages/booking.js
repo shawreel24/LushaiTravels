@@ -158,11 +158,13 @@ export function initBooking(id, params) {
         throw new Error('Session expired. Please log out and log in again.');
       }
 
+      // We use the Anon Key for the edge function to avoid "Unsupported JWT algorithm ES256" error
+      // from the Supabase API Gateway, as this function doesn't require strict RLS identity.
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-razorpay-order`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
         },
         body: JSON.stringify({ amount: total })
       });
