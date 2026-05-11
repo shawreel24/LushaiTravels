@@ -32,6 +32,7 @@ export async function initStayDetail(id) {
         reviews: liveStay.reviews_count || liveStay.reviews || 0,
         lat: liveStay.lat || 23.7271,
         lng: liveStay.lng || 92.7176,
+        map_link: liveStay.map_link || null,
         coverImage: liveStay.cover_image,
         images: liveStay.images?.length ? liveStay.images : [liveStay.cover_image || 'https://via.placeholder.com/800'],
         host: {
@@ -126,6 +127,7 @@ export async function initStayDetail(id) {
           <h3 style="margin-bottom:16px">📍 Location</h3>
           <div id="stay-map" class="map-container" style="margin-bottom:32px"></div>
           <p style="color:var(--text-muted);font-size:0.9rem;margin-bottom:8px">📍 ${stay.location}</p>
+          ${stay.map_link ? `<a href="${stay.map_link}" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:8px;background:var(--glass);border:1px solid var(--glass-border);border-radius:50px;padding:8px 18px;font-size:0.85rem;color:var(--emerald-400);text-decoration:none;margin-bottom:16px;font-weight:600;transition:all 0.2s" onmouseover="this.style.background='rgba(16,185,129,0.15)'" onmouseout="this.style.background='var(--glass)'">🗺️ View on Google Maps</a>` : ''}
           <div style="margin-bottom:32px">
             ${(stay.nearbyAttractions || []).map(n => `<div style="font-size:0.85rem;color:var(--text-muted);margin-bottom:4px">→ ${n}</div>`).join('')}
           </div>
@@ -137,7 +139,7 @@ export async function initStayDetail(id) {
             <button class="btn btn-outline btn-sm" id="write-review-btn">✍️ Write a Review</button>
           </div>
           <div id="reviews-list">
-            ${reviews.length ? reviews.map(r => reviewCard(r)).join('') : sampleReviews(stay)}
+            ${reviews.length ? reviews.map(r => reviewCard(r)).join('') : '<div style="color:var(--text-muted);font-size:0.9rem;padding:20px 0">No reviews yet. Be the first to share your experience!</div>'}
           </div>
           <div id="review-form" class="hidden" style="background:var(--glass);border:1px solid var(--glass-border);border-radius:var(--radius);padding:28px;margin-top:24px">
             <h4 style="margin-bottom:20px">Share Your Experience</h4>
@@ -176,10 +178,7 @@ export async function initStayDetail(id) {
             <button class="btn btn-primary w-full" id="reserve-btn" style="justify-content:center;font-size:1rem;padding:16px">Reserve & Pay →</button>
             <p style="text-align:center;font-size:0.8rem;color:var(--text-muted);margin-top:12px">🔒 Secure booking · You won't be charged yet</p>
 
-            <div class="divider-h"></div>
-            <div style="font-weight:700;margin-bottom:12px">Contact Host</div>
-            <div style="font-size:0.85rem;color:var(--text-muted);margin-bottom:6px">📞 ${stay.host.phone || '+91 00000 00000'}</div>
-            <div style="font-size:0.85rem;color:var(--text-muted)">💬 Usually replies within 2 hours</div>
+
           </div>
         </div>
       </div>
